@@ -37,14 +37,11 @@ function initSidebar() {
         } catch(e) { console.error("Error parsing user info", e); }
     }
 
-    // Re-attach listeners to all items (including dynamic ones)
+    // Re-attach listeners to all items
     document.querySelectorAll('.menu-item').forEach(item => {
-        // Remove existing to avoid double listeners if called multiple times
-        item.onclick = null; 
         item.addEventListener('click', function() {
             document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
             this.classList.add('active');
-            // If there's an <a> inside, let it handle navigation naturally
         });
     });
 }
@@ -58,32 +55,21 @@ async function loadAppInfo() {
     try {
         const resp = await fetch("/api/config");
         const config = await resp.json();
-        if (config.app_version) {
-            const versionStr = "v" + config.app_version;
-            
-            // Header version (if exists)
-            const versionEl = document.getElementById("app-version");
-            if (versionEl) {
-                versionEl.textContent = versionStr;
-                versionEl.style.display = "inline-block"; // Ensure visibility
-            }
-            
-            // Footer versions (all occurrences)
-            document.querySelectorAll(".footer-version").forEach(el => {
-                el.textContent = "(" + versionStr + ")";
-                el.style.opacity = "0.7";
-                el.style.fontSize = "0.85em";
-                el.style.marginLeft = "5px";
-                el.style.display = "inline"; // Ensure visibility
-            });
-            
-            console.log("Clarity Version loaded: " + versionStr);
+        const versionStr = "v" + (config.app_version || "0.0.0");
+        
+        const versionEl = document.getElementById("app-version");
+        if (versionEl) {
+            versionEl.textContent = versionStr;
+            versionEl.style.display = "inline-block";
+        }
+        const footerVer = document.querySelector(".footer-version");
+        if (footerVer) {
+            footerVer.textContent = versionStr;
         }
     } catch (e) {
         console.error("Could not load app info", e);
     }
 }
 
-// Run immediately and on DOMContentLoaded to be sure
 loadAppInfo();
 document.addEventListener("DOMContentLoaded", loadAppInfo);

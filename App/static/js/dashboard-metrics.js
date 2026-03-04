@@ -453,10 +453,24 @@
                     },
                     interaction: { mode: 'index', intersect: false },
                     scales: { y: { beginAtZero: true, ticks: { callback: (v) => '€' + v.toLocaleString() } } },
-                    plugins: { 
+                    plugins: {
                         todayLine: { index: chartData.currentBucketIdx },
-                        legend: { position: 'bottom', onClick: (e, legendItem, legend) => {
-                            const index = legendItem.datasetIndex;
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    if (!items.length) return '';
+                                    const item = items[0];
+                                    const chart = item.chart;
+                                    const todayIdx = chart.options.plugins.todayLine?.index;
+                                    let title = item.label;
+                                    if (todayIdx !== undefined && todayIdx !== -1 && item.dataIndex > todayIdx) {
+                                        title += ' (Forecast)';
+                                    }
+                                    return title;
+                                }
+                            }
+                        },
+                        legend: { position: 'bottom', onClick: (e, legendItem, legend) => {                            const index = legendItem.datasetIndex;
                             const meta = legend.chart.getDatasetMeta(index);
                             meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : null;
                             legend.chart.update();

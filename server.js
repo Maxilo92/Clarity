@@ -137,6 +137,7 @@ app.get('/api/companies/domain', (req, res) => {
 
 app.post('/api/onboarding/admin', async (req, res) => {
     const { company_name, domain, full_name, email, password } = req.body;
+    console.log(`[Onboarding] Request for: ${company_name} (${domain}), User: ${email}`);
 
     if (!company_name || !domain || !full_name || !email || !password) {
         return res.status(400).json({ error: "All fields are required." });
@@ -144,11 +145,19 @@ app.post('/api/onboarding/admin', async (req, res) => {
 
     // 1. Check if email is globally indexed
     sysDb.get("SELECT email FROM user_index WHERE email = ?", [email], async (err, indexed) => {
-        if (indexed) return res.status(400).json({ error: "A user with this email already exists." });
+        if (err) {
+            console.error("[Onboarding] user_index query error:", err);
+            return res.status(500).json({ error: "Database error." });
+        }
+        if (indexed) {
+            console.warn(`[Onboarding] Email already exists: ${email}`);
+            return res.status(400).json({ error: "A user with this email already exists." });
+        }
 
         // 2. Create Company
         sysDb.run("INSERT INTO companies (name, domain) VALUES (?, ?)", [company_name, domain], async function(err) {
             if (err) {
+                console.error("[Onboarding] Company creation error:", err);
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(400).json({ error: "This company domain is already registered." });
                 }
@@ -156,6 +165,7 @@ app.post('/api/onboarding/admin', async (req, res) => {
             }
 
             const companyId = this.lastID;
+            console.log(`[Onboarding] Company created ID: ${companyId}`);
             const cDb = getCompanyDb(companyId);
 
             try {
@@ -166,21 +176,25 @@ app.post('/api/onboarding/admin', async (req, res) => {
                     [full_name, email, hashedPassword, 'admin'], function(err) {
 
                     if (err) {
+                        console.error("[Onboarding] User DB error:", err);
                         // Rollback company if user fails
                         sysDb.run("DELETE FROM companies WHERE id = ?", [companyId]);
                         return res.status(500).json({ error: "User creation failed within company." });
                     }
 
                     const userId = this.lastID;
+                    console.log(`[Onboarding] User created ID: ${userId}`);
 
                     // 4. Index the user globally
                     sysDb.run("INSERT INTO user_index (email, company_id) VALUES (?, ?)", [email, companyId], (err) => {
                         if (err) {
+                            console.error("[Onboarding] Global Index error:", err);
                             // Rollback user and company
                             cDb.run("DELETE FROM users WHERE id = ?", [userId]);
                             sysDb.run("DELETE FROM companies WHERE id = ?", [companyId]);
                             return res.status(500).json({ error: "Final indexing failed." });
                         }
+                        console.log(`[Onboarding] Success! Created Admin: ${email} for Company: ${companyId}`);
                         res.json({ success: true, company_id: companyId, user_id: userId });
                     });
                 });
@@ -224,17 +238,29 @@ app.post('/api/users/signup', async (req, res) => {
 
 app.post('/api/users/login', (req, res) => {
     const { email, password } = req.body;
+    console.log(`[Login] Attempt for: ${email}`);
+
     sysDb.get("SELECT company_id FROM user_index WHERE email = ?", [email], (err, index) => {
-        if (err || !index) return res.status(401).json({ error: "Invalid credentials." });
+        if (err || !index) {
+            console.warn(`[Login] Email not found in global index: ${email}`);
+            return res.status(401).json({ error: "Invalid credentials." });
+        }
         
         const cDb = getCompanyDb(index.company_id);
         cDb.get("SELECT * FROM users WHERE email = ?", [email], async (err, row) => {
-            if (err || !row) return res.status(401).json({ error: "Invalid credentials." });
+            if (err || !row) {
+                console.warn(`[Login] User not found in company ${index.company_id} DB: ${email}`);
+                return res.status(401).json({ error: "Invalid credentials." });
+            }
             
             const match = await bcrypt.compare(password, row.password);
-            if (!match) return res.status(401).json({ error: "Invalid credentials." });
+            if (!match) {
+                console.warn(`[Login] Password mismatch for: ${email}`);
+                return res.status(401).json({ error: "Invalid credentials." });
+            }
             
             sysDb.get("SELECT name FROM companies WHERE id = ?", [index.company_id], (err, comp) => {
+                console.log(`[Login] Success! User: ${email}, Company: ${comp ? comp.name : index.company_id}`);
                 res.json({ 
                     success: true, 
                     user: { 
@@ -391,27 +417,106 @@ app.post('/api/config', (req, res) => {
 });
 
 app.get("/api/transactions", (req, res) => {
-    const { company_id, user_id, limit=25, offset=0 } = req.query;
-    const cDb = getCompanyDb(company_id);
-    cDb.all("SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?", 
-        [user_id, parseInt(limit), parseInt(offset)], (err, rows) => res.json({ eintraege: rows || [] }));
+    const { company_id, user_id, id, limit=25, offset=0, category, search, date, sort="timestamp", order="DESC" } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id is required" });
+    
+    try {
+        const cDb = getCompanyDb(company_id);
+        let query = "SELECT * FROM transactions", where = [], params = [];
+        
+        if (user_id) { where.push("user_id = ?"); params.push(parseInt(user_id)); }
+        
+        if (id) { 
+            const idNum = Number(id); 
+            if (!isNaN(idNum)) { where.push("id = ?"); params.push(idNum); } 
+            else { where.push("id = ?"); params.push(id); } 
+        }
+        
+        if (category && category !== "all") { where.push("kategorie = ?"); params.push(category); }
+        if (date) { where.push("timestamp LIKE ?"); params.push(`${date}%`); }
+        
+        if (search) { 
+            where.push("(name LIKE ? OR sender LIKE ? OR empfaenger LIKE ? OR kategorie LIKE ?)"); 
+            const p = `%${search}%`; 
+            params.push(p,p,p,p); 
+        }
+        
+        if (where.length) query += " WHERE " + where.join(" AND ");
+        
+        // Sanitize sort column to prevent SQL injection
+        const allowedCols = ["timestamp", "wert", "name", "kategorie", "sender", "empfaenger"];
+        const finalSort = allowedCols.includes(sort) ? sort : "timestamp";
+        const finalOrder = order.toUpperCase() === "ASC" ? "ASC" : "DESC";
+        
+        query += ` ORDER BY ${finalSort} ${finalOrder} LIMIT ? OFFSET ?`;
+        params.push(parseInt(limit), parseInt(offset));
+        
+        cDb.all(query, params, (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ eintraege: rows || [] });
+        });
+    } catch(e) {
+        res.status(400).json({ error: e.message });
+    }
 });
 
 app.post('/api/transactions', (req, res) => {
-    const { company_id, user_id, name, kategorie, wert, sender, empfaenger } = req.body;
-    const cDb = getCompanyDb(company_id);
-    cDb.run("INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id) VALUES (?,?,?,?,?,?,?,?)",
-        [Date.now(), name, kategorie, parseFloat(wert), new Date().toISOString(), sender, empfaenger, user_id],
-        () => res.json({ success: true }));
+    const { company_id, user_id, name, kategorie, wert, sender, empfaenger, timestamp } = req.body;
+    if (!company_id) return res.status(400).json({ error: "company_id is required" });
+    
+    try {
+        const cDb = getCompanyDb(company_id);
+        const finalTime = timestamp || new Date().toISOString();
+        cDb.run("INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id) VALUES (?,?,?,?,?,?,?,?)",
+            [Date.now() + Math.random(), name || "Unbenannt", kategorie || "Sonstiges", parseFloat(wert || 0), finalTime, sender || "", empfaenger || "", user_id],
+            function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ success: true });
+            });
+    } catch(e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+app.put('/api/transactions/:id', (req, res) => {
+    const { company_id, name, kategorie, wert, sender, empfaenger, timestamp } = req.body;
+    if (!company_id) return res.status(400).json({ error: "company_id is required" });
+    
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.run(
+            "UPDATE transactions SET name = ?, kategorie = ?, wert = ?, sender = ?, empfaenger = ?, timestamp = ? WHERE id = ?",
+            [name, kategorie, parseFloat(wert), sender, empfaenger, timestamp, req.params.id],
+            function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ success: true });
+            }
+        );
+    } catch(e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+app.delete('/api/transactions/:id', (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id is required" });
+    
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.run("DELETE FROM transactions WHERE id = ?", req.params.id, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        });
+    } catch(e) {
+        res.status(400).json({ error: e.message });
+    }
 });
 
 app.post('/api/chat', async (req, res) => {
     const { company_id, user_id, messages } = req.body;
-    console.log(`[CHAT] Request from user_id: ${user_id}, company_id: ${company_id}`);
     
     if (!company_id || !user_id) {
-        console.warn(`[CHAT] Rejected: Missing IDs. user_id=${user_id}, company_id=${company_id}`);
-        return res.status(400).json({ error: "Missing company_id or user_id in chat request." });
+        return res.status(400).json({ error: "Missing IDs" });
     }
 
     try {
@@ -419,55 +524,43 @@ app.post('/api/chat', async (req, res) => {
         const summary = await getDatabaseSummary(company_id, user_id);
         
         cDb.get("SELECT users.full_name, user_settings.nickname FROM users LEFT JOIN user_settings ON users.id = user_settings.user_id WHERE users.id = ?", [user_id], async (err, row) => {
-            if (err) {
-                console.error("[CHAT] User lookup error:", err);
-                return res.status(500).json({ error: "User lookup failed." });
-            }
-            
-            // Default nickname is first name from full_name
-            let nickname = "User";
-            if (row) {
-                if (row.nickname) {
-                    nickname = row.nickname;
-                } else if (row.full_name) {
-                    nickname = row.full_name.split(' ')[0];
-                }
-            }
-            console.log(`[CHAT] User nickname identified: ${nickname}`);
+            let nickname = row?.nickname || (row?.full_name ? row.full_name.split(' ')[0] : "User");
 
-            const systemPrompt = `You are Joule, an intelligent financial advisor for "Clarity". 
-Addressing user as ${nickname}. 
-
-SECURITY: You are strictly isolated to the data of the current user.
+            // Dynamic Context to be injected
+            const dynamicContext = `\n\n### DYNAMIC USER CONTEXT:
+User Name: ${nickname}
 ${summary}
+Current Server Time: ${new Date().toISOString()}`;
 
-Keep it professional and helpful.`;
+            // Inject into the FIRST system message if found, otherwise add as new
+            let finalMessages = [...messages];
+            let systemMsgIdx = finalMessages.findIndex(m => m.role === 'system');
+            
+            if (systemMsgIdx !== -1) {
+                finalMessages[systemMsgIdx].content += dynamicContext;
+            } else {
+                finalMessages.unshift({ role: 'system', content: "You are Joule." + dynamicContext });
+            }
 
             try {
-                console.log(`[CHAT] Sending request to Groq API...`);
                 const resp = await fetchFn("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
-                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{role:"system", content:systemPrompt}, ...messages] })
+                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: finalMessages })
                 });
-                
                 const data = await resp.json();
-                if (!resp.ok) {
-                    console.error("[CHAT] Groq API returned error:", data);
-                    return res.status(resp.status).json(data);
-                }
-                
-                console.log(`[CHAT] Groq response received successfully.`);
                 res.json(data);
-            } catch (fetchErr) {
-                console.error("[CHAT] Groq fetch error:", fetchErr);
-                res.status(500).json({ error: "AI service communication failed." });
-            }
+            } catch (err) { res.status(500).json({ error: "AI communication failed" }); }
         });
-    } catch(e) {
-        console.error("[CHAT] Route error:", e);
-        res.status(500).json({ error: e.message });
-    }
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Global Error Handler for API routes
+app.use('/api', (err, req, res, next) => {
+    console.error("[API Error]", err);
+    res.status(err.status || 500).json({
+        error: err.message || "An unexpected error occurred."
+    });
 });
 
 app.listen(3000, () => console.log('Clarity Server running on Port 3000'));

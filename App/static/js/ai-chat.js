@@ -14,27 +14,21 @@
     }
 
     const STORAGE_KEY = `joule_chat_history_${userId}`;
-    const SYSTEM_PROMPT = `You are Joule, the intelligent AI assistant for "Clarity", an advanced financial dashboard.
-Your task is to support users in analyzing their finances and provide advice as a Personal Finance Advisor when needed.
-### CONTEXT:
-- This app is called "Clarity". It is an intelligent tool for tracking transactions (income/expenses).
-- There is a dashboard (overview), a transaction list, and a support page.
-- On the support page, there are FAQs and a contact form for human support.
+    const SYSTEM_PROMPT = `You are Joule, the highly specialized AI core of "Clarity" (Financial Intelligence Platform).
+Your task is to support users in analyzing their finances.
+
+### CORE DIRECTIVE:
+When a user asks about their transactions, you MUST use the QUERY tool to fetch the latest data. 
+After receiving the research results, provide a helpful summary. Do NOT repeat the research if you already have the data.
 
 ### STYLE GUIDELINES:
-- **HELPFULNESS:** When you perform an action (e.g., search), briefly explain what you are doing. Never respond with only a tool call.
-- **SUPPORT:** If users ask for help or support, refer them to the support page or offer to answer their questions directly here.
-- **FINANCE ADVISOR:** Provide practical tips on budgeting, saving, and investing upon request.
-- **DISCRETION:** Never mention amounts or the balance unless explicitly asked.
-- **NATURALNESS:** Respond in a friendly and professional manner.
+- **STRICT VISUAL CLEANLINESS:** NEVER include JSON, tool calls, or technical fragments like {"date": "..."} in the text visible to the user.
 - **BREVITY:** Maximum 3 sentences per response.
-- Use a professional and precise tone.
 
-### TOOLS:
-- QUERY:{"category": "...", "name": "...", "date": "YYYY-MM-DD"} -> Sucht nach Transaktionen.
-**WICHTIG:** Nutze QUERY für JEDE Frage zu Transaktionen, damit die Benutzeroberfläche (Tabelle) im Hintergrund für den Nutzer gefiltert wird, auch wenn du die Antwort bereits kennst.
-- ADD_TRANSACTION:{"name": "...", "kategorie": "...", "wert": -12.50, "sender": "...", "empfaenger": "..."} -> Fügt eine NEUE Transaktion hinzu.
-**WICHTIG:** Nutze ADD_TRANSACTION nur, wenn der Nutzer explizit darum bittet, etwas NEUES zu speichern. Nutze es NIEMALS, wenn du eine bereits existierende (angehängte) Transaktion analysierst!`;
+### TECHNICAL COMMANDS (HIDDEN):
+Place tool calls on a NEW LINE at the VERY END of your response. 
+Format: KEYWORD:{"json": "data"}
+Available keywords: QUERY, ADD_TRANSACTION.`;
 
     let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     let activeAttachment = null;
@@ -92,87 +86,39 @@ Your task is to support users in analyzing their finances and provide advice as 
     const attachmentName = document.getElementById('aiChatAttachmentName');
     const removeAttachment = document.getElementById('aiChatRemoveAttachment');
 
-    let inactivityTimer;
-    let isBubbleDismissed = false; // Prevents bubble from coming back in same session if X clicked
-
-    function resetInactivityTimer() {
-        clearTimeout(inactivityTimer);
-        if (isPanelOpen || isBubbleDismissed) return;
-        
-        inactivityTimer = setTimeout(() => {
-            if (!isPanelOpen && !isBubbleDismissed && helpBubble) {
-                helpBubble.classList.add('show');
-            }
-        }, 60000); // 60 seconds
-    }
-
-    // Interaction listeners
-    window.addEventListener('mousemove', () => {
-        // Only reset if NOT showing, to allow clicking the bubble
-        if (!helpBubble.classList.contains('show')) resetInactivityTimer();
-    }, { passive: true });
-
-    window.addEventListener('scroll', () => {
-        if (!helpBubble.classList.contains('show')) resetInactivityTimer();
-    }, { passive: true });
-
-    window.addEventListener('keydown', () => {
-        if (helpBubble.classList.contains('show')) helpBubble.classList.remove('show');
-        resetInactivityTimer();
-    }, { passive: true });
-
-    window.addEventListener('click', (e) => {
-        // If clicking anywhere else than the bubble, hide it
-        if (helpBubble.classList.contains('show') && !helpBubble.contains(e.target)) {
-            helpBubble.classList.remove('show');
-        }
-        if (!isPanelOpen) resetInactivityTimer();
-    }, { passive: true });
-
-    if (helpBubble) {
-        helpBubble.onclick = (e) => {
-            e.stopPropagation();
-            helpBubble.classList.remove('show');
-            openChat();
-        };
-    }
-
-    if (helpBubbleClose) {
-        helpBubbleClose.onclick = (e) => {
-            e.stopPropagation(); // Don't open chat
-            helpBubble.classList.remove('show');
-            isBubbleDismissed = true; // Stay hidden
-            clearTimeout(inactivityTimer);
-        };
-    }
-
-    function saveHistory() { localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory)); }
-
-    function toggleNotificationDot(show) {
-        const diamondBtn = document.querySelector('.diamond-btn');
-        if (!diamondBtn) return;
-        let dot = diamondBtn.querySelector('.notification-dot');
-        if (!dot) { dot = document.createElement('div'); dot.className = 'notification-dot'; diamondBtn.appendChild(dot); }
-        dot.style.display = show ? 'block' : 'none';
+    function saveHistory() { 
+        // Only save real user/assistant messages, filter out internal technical context
+        const persistentHistory = chatHistory.filter(m => 
+            !m.content.includes("ERGEBNIS DER RECHERCHE") && 
+            !m.content.includes("AKTION ERFOLGREICH") &&
+            m.role !== 'system'
+        );
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persistentHistory)); 
     }
 
     function openChat() { 
         panel.classList.add('open'); 
         overlay.classList.add('open'); 
-        if (helpBubble) helpBubble.classList.remove('show');
-        input.focus(); 
         isPanelOpen = true; 
-        toggleNotificationDot(false); 
-        clearTimeout(inactivityTimer);
+        toggleNotificationDot(false);
+        if (helpBubble) helpBubble.style.display = 'none';
     }
+    
     function closeChat() { 
         panel.classList.remove('open'); 
         overlay.classList.remove('open'); 
         isPanelOpen = false; 
-        resetInactivityTimer();
     }
 
-    closeBtn.onclick = closeChat;
+    function toggleNotificationDot(show) {
+        const btn = document.querySelector('.diamond-btn');
+        if (btn) btn.classList.toggle('has-notification', show);
+    }
+
+    if (helpBubbleClose) {
+        helpBubbleClose.onclick = (e) => { e.stopPropagation(); helpBubble.style.display = 'none'; isBubbleDismissed = true; };
+    }
+
     overlay.onclick = closeChat;
     
     clearBtn.onclick = () => {
@@ -192,7 +138,6 @@ Your task is to support users in analyzing their finances and provide advice as 
         else setTimeout(setupButton, 100);
     }
     setupButton();
-    resetInactivityTimer();
 
     input.oninput = function () { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px'; };
     input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
@@ -209,17 +154,27 @@ Your task is to support users in analyzing their finances and provide advice as 
     removeAttachment.onclick = () => { activeAttachment = null; attachmentArea.style.display = 'none'; };
 
     function appendMessage(text, role, attachment = null, save = true) {
+        if (!text && !attachment) return false;
+
+        // TECHNICAL FILTER: Do not show research results or tool calls to user
+        if (text.includes("ERGEBNIS DER RECHERCHE") || text.includes("AKTION ERFOLGREICH") || text.includes("QUERY:") || text.includes("ADD_TRANSACTION:")) {
+            if (save) {
+                chatHistory.push({ role, content: text, attachment });
+                // We don't call saveHistory here because it would filter these out anyway
+            }
+            return true; // Pretend it was appended so logic continues
+        }
+
         let cleanText = text
             .replace(/\[ANGEHÄNGTE TRANSAKTION:[\s\S]*?\]/gi, '')
             .replace(/QUERY:[\s\n]*\{[\s\S]*?\}/gi, '')
             .replace(/ADD_TRANSACTION:[\s\n]*\{[\s\S]*?\}/gi, '')
+            .replace(/\{[^{}]*?"(date|category|name|wert|sender|empfaenger|company_id|user_id)"[^{}]*?\}/gi, '')
             .replace(/\bQUERY\b/g, '')
             .replace(/\bADD_TRANSACTION\b/g, '')
             .trim();
         
-        // Remove trailing or leading newlines that might have been part of the technical prefix
         cleanText = cleanText.replace(/^\s+|\s+$/g, '');
-        
         if (!cleanText && role === 'assistant' && !attachment) return false; 
 
         const wrapper = document.createElement('div');
@@ -232,24 +187,12 @@ Your task is to support users in analyzing their finances and provide advice as 
 
         if (attachment) {
             const chip = document.createElement('div');
-            chip.className = 'attachment-chip-interactive';
-            chip.style.cssText = 'display: inline-flex; align-items: center; background: #f3f0ff; border: 1px solid #6f42c1; border-radius: 8px; padding: 4px 8px; margin-bottom: 8px; font-size: 11px; color: #6f42c1; font-weight: bold; cursor: pointer; transition: background 0.2s;';
-            chip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> ${attachment.name || attachment.kategorie} (${parseFloat(attachment.wert).toFixed(2)}€)`;
-            
-            chip.onclick = (e) => {
-                e.stopPropagation();
-                // Close chat panel to show the result
+            chip.style.cssText = 'display: inline-flex; align-items: center; background: #f3f0ff; border: 1px solid #6f42c1; border-radius: 8px; padding: 4px 8px; margin-bottom: 8px; font-size: 11px; color: #6f42c1; font-weight: bold; cursor: pointer;';
+            chip.innerHTML = `📎 ${attachment.name || attachment.kategorie} (${parseFloat(attachment.wert).toFixed(2)}€)`;
+            chip.onclick = () => {
                 closeChat();
-                // Trigger global search/filter for this transaction ID
-                document.dispatchEvent(new CustomEvent('forceFilter', { 
-                    detail: { 
-                        id: attachment.id,
-                        search: attachment.id ? "" : (attachment.name || attachment.kategorie),
-                        category: 'all' 
-                    } 
-                }));
+                document.dispatchEvent(new CustomEvent('forceFilter', { detail: { id: attachment.id, category: 'all' } }));
             };
-            
             bubble.appendChild(chip);
             if (cleanText) bubble.appendChild(document.createElement('br'));
         }
@@ -273,13 +216,14 @@ Your task is to support users in analyzing their finances and provide advice as 
     if (chatHistory.length === 0) {
         appendMessage("Hallo! Ich bin Joule. Wie kann ich dir heute helfen?", "assistant", null, true);
     } else {
-        chatHistory = chatHistory.map(m => ({ role: m.role === 'bot' ? 'assistant' : m.role, content: m.content, attachment: m.attachment }));
         messagesContainer.innerHTML = "";
+        // Render only visible messages from history
         chatHistory.forEach(m => {
-            appendMessage(m.content, m.role, m.attachment, false);
+            if (!m.content.includes("ERGEBNIS DER RECHERCHE") && !m.content.includes("AKTION ERFOLGREICH")) {
+                appendMessage(m.content, m.role, m.attachment, false);
+            }
         });
     }
-
 
     function showTyping() {
         const wrapper = document.createElement('div');
@@ -301,17 +245,16 @@ Your task is to support users in analyzing their finances and provide advice as 
         if (!text && !activeAttachment) return;
 
         let userMsgContent = text;
-        const currentAttachment = activeAttachment;
-        if (currentAttachment) {
-            const t = currentAttachment;
-            userMsgContent = `[ANGEHÄNGTE TRANSAKTION: ${t.name || t.kategorie}, Kat: ${t.kategorie}, Wert: ${t.wert}€, Datum: ${t.timestamp}, Von: ${t.sender}, An: ${t.empfaenger}] \n\n` + (text || "Analysiere diese Transaktion.");
+        let currentAttachment = activeAttachment;
+
+        if (activeAttachment) {
+            const t = activeAttachment;
+            userMsgContent = `[ANGEHÄNGTE TRANSAKTION: ${t.name || t.kategorie}, Kat: ${t.kategorie}, Wert: ${t.wert}€, Datum: ${t.timestamp}] \n\n` + (text || "Analysiere diese Transaktion.");
             activeAttachment = null;
             attachmentArea.style.display = 'none';
         }
 
-        console.log(`[Joule] Sending message. User: ${userId}, Company: ${companyId}`);
         appendMessage(text || "Analysiere Transaktion...", 'user', currentAttachment, true);
-        // We update the content in history to include the technical attachment info for the AI
         chatHistory[chatHistory.length - 1].content = userMsgContent;
         saveHistory();
 
@@ -319,7 +262,6 @@ Your task is to support users in analyzing their finances and provide advice as 
         let typingEl = showTyping();
 
         async function getAIResponse(history) {
-            // SECURITY: Only send role and content to the API, extra fields like 'attachment' cause errors
             const cleanedHistory = history.map(({ role, content }) => ({ role, content }));
             const chatMessages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(cleanedHistory);
             
@@ -331,20 +273,13 @@ Your task is to support users in analyzing their finances and provide advice as 
                 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    const errorMsg = errorData.error?.message || errorData.error || "Fehler bei der Kommunikation mit dem Server.";
-                    console.error("API Error:", response.status, errorData);
-                    throw new Error(errorMsg);
+                    throw new Error(errorData.error?.message || errorData.error || "Server Error");
                 }
 
                 const result = await response.json();
-                if (!result.choices || !result.choices.length || !result.choices[0].message) {
-                    console.error("Unexpected API response format:", result);
-                    throw new Error("Ungültige Antwort vom KI-Dienst.");
-                }
-                
                 return result.choices[0].message.content;
             } catch (error) {
-                console.error("getAIResponse failed:", error);
+                console.error("AI Error:", error);
                 throw error;
             }
         }
@@ -352,56 +287,54 @@ Your task is to support users in analyzing their finances and provide advice as 
         try {
             let reply = await getAIResponse(chatHistory);
             
-            // Clean up markdown code blocks if AI wraps the JSON in them
-            const cleanReply = reply.replace(/```json\n|\n```/g, '');
-            
             for (let i = 0; i < 3; i++) {
-                // More robust regex to catch QUERY even if wrapped in text or markdown
+                const cleanReply = reply.replace(/```json\n|\n```/g, '');
                 const qM = cleanReply.match(/QUERY:\s*(\{[\s\S]*?\})/);
                 const aM = cleanReply.match(/ADD_TRANSACTION:\s*(\{[\s\S]*?\})/);
                 
                 if (qM) {
                     const criteria = JSON.parse(qM[1]);
-                    
-                    // Build clean filter for UI
                     const forceData = {};
                     if (criteria.category) forceData.category = criteria.category;
                     if (criteria.date) forceData.date = (criteria.date === 'all' ? '' : criteria.date);
                     if (criteria.name) forceData.search = (criteria.name === 'all' ? '' : criteria.name);
-                    
                     document.dispatchEvent(new CustomEvent('forceFilter', { detail: forceData }));
 
-                    let url = `/api/transactions?limit=20`;
+                    let url = `/api/transactions?limit=20&company_id=${companyId}&user_id=${userId}`;
                     if (criteria.category && criteria.category !== 'all') url += `&category=${encodeURIComponent(criteria.category)}`;
                     if (criteria.name && criteria.name !== 'all') url += `&search=${encodeURIComponent(criteria.name)}`;
                     if (criteria.date && criteria.date !== 'all') url += `&date=${encodeURIComponent(criteria.date)}`;
+                    
                     const res = await fetch(url);
                     const data = await res.json();
                     const results = data.eintraege || [];
                     const resultMsg = `ERGEBNIS DER RECHERCHE: ` + (results.length > 0 ? `Gefunden: ` + results.map(t => `${t.name} (${t.wert}€)`).join(', ') : `Keine Einträge gefunden.`);
+                    
+                    // Internal pushes, not rendered to user
                     chatHistory.push({ role: 'assistant', content: reply });
-                    chatHistory.push({ role: 'user', content: resultMsg });
+                    chatHistory.push({ role: 'system', content: resultMsg });
                     reply = await getAIResponse(chatHistory);
                 } 
                 else if (aM) {
                     const payload = JSON.parse(aM[1]);
+                    payload.company_id = companyId;
+                    payload.user_id = userId;
                     const response = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (response.ok) {
                         document.dispatchEvent(new Event('dataUpdated'));
                         chatHistory.push({ role: 'assistant', content: reply });
-                        chatHistory.push({ role: 'user', content: "AKTION ERFOLGREICH: Die Transaktion wurde gespeichert." });
+                        chatHistory.push({ role: 'system', content: "AKTION ERFOLGREICH: Die Transaktion wurde gespeichert." });
                         reply = await getAIResponse(chatHistory);
                     } else break;
                 }
                 else break;
             }
             if (typingEl) typingEl.remove();
-            if (!appendMessage(reply, 'assistant', null, true)) appendMessage("Ich konnte die gewünschten Informationen finden.", "assistant", null, true);
+            appendMessage(reply, 'assistant', null, true);
         } catch (err) {
             console.error(err);
             if (typingEl) typingEl.remove();
-            const msg = err.message || 'Fehler bei der Kommunikation.';
-            appendMessage(msg, 'assistant', null, true);
+            appendMessage(err.message || 'Fehler bei der Kommunikation.', 'assistant', null, true);
         } finally { sendBtn.disabled = false; }
     }
 })();

@@ -194,3 +194,792 @@ Clarity Server running on Port 3000
 [2026-03-04T16:16:02.887Z] GET /api/users?company_id=1
 [2026-03-04T16:16:02.887Z] GET /api/config
 Clarity Server running on Port 3000
+[2026-03-04T16:18:25.296Z] GET /admin
+[2026-03-04T16:18:25.324Z] GET /static/css/style.css
+[2026-03-04T16:18:25.325Z] GET /static/js/auth.js
+[2026-03-04T16:18:25.327Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:25.329Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:25.335Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:18:25.337Z] GET /api/config
+[2026-03-04T16:18:25.342Z] GET /api/invites?company_id=1
+[2026-03-04T16:18:25.344Z] GET /api/users?company_id=1
+[2026-03-04T16:18:25.345Z] GET /api/config
+[2026-03-04T16:18:25.348Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:18:25.360Z] GET /login
+[2026-03-04T16:18:25.421Z] GET /static/css/style.css
+[2026-03-04T16:18:25.423Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:25.423Z] GET /static/js/auth.js
+[2026-03-04T16:18:25.424Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:25.739Z] GET /api/config
+[2026-03-04T16:18:25.740Z] GET /api/config
+[2026-03-04T16:18:27.995Z] GET /dashboard
+[2026-03-04T16:18:28.016Z] GET /static/css/style.css
+[2026-03-04T16:18:28.020Z] GET /static/js/auth.js
+[2026-03-04T16:18:28.021Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:28.042Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:28.042Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:18:28.043Z] GET /static/js/ai-chat.js
+[2026-03-04T16:18:28.045Z] GET /static/js/data-manager.js
+[2026-03-04T16:18:28.047Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:18:28.047Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:18:28.048Z] GET /static/js/transactions.js
+[2026-03-04T16:18:28.049Z] GET /api/config
+[2026-03-04T16:18:28.068Z] GET /login
+[2026-03-04T16:18:28.124Z] GET /static/css/style.css
+[2026-03-04T16:18:28.125Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:28.125Z] GET /static/js/auth.js
+[2026-03-04T16:18:28.126Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:28.132Z] GET /api/config
+[2026-03-04T16:18:28.134Z] GET /api/config
+[2026-03-04T16:18:29.201Z] GET /dashboard
+[2026-03-04T16:18:29.226Z] GET /static/css/style.css
+[2026-03-04T16:18:29.230Z] GET /static/js/auth.js
+[2026-03-04T16:18:29.231Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:29.232Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:29.236Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:18:29.237Z] GET /static/js/ai-chat.js
+[2026-03-04T16:18:29.237Z] GET /static/js/data-manager.js
+[2026-03-04T16:18:29.238Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:18:29.238Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:18:29.240Z] GET /static/js/transactions.js
+[2026-03-04T16:18:29.244Z] GET /api/config
+[2026-03-04T16:18:29.255Z] GET /login
+[2026-03-04T16:18:29.276Z] GET /static/css/style.css
+[2026-03-04T16:18:29.310Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:29.311Z] GET /static/js/auth.js
+[2026-03-04T16:18:29.311Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:29.322Z] GET /api/config
+[2026-03-04T16:18:29.324Z] GET /api/config
+[2026-03-04T16:18:29.878Z] GET /dashboard
+[2026-03-04T16:18:29.899Z] GET /static/css/style.css
+[2026-03-04T16:18:29.903Z] GET /static/js/auth.js
+[2026-03-04T16:18:29.904Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:29.904Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:29.911Z] GET /static/js/ai-chat.js
+[2026-03-04T16:18:29.912Z] GET /static/js/data-manager.js
+[2026-03-04T16:18:29.913Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:18:29.914Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:18:29.915Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:18:29.916Z] GET /static/js/transactions.js
+[2026-03-04T16:18:29.917Z] GET /api/config
+[2026-03-04T16:18:29.932Z] GET /login
+[2026-03-04T16:18:29.988Z] GET /static/css/style.css
+[2026-03-04T16:18:29.993Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:29.993Z] GET /static/js/auth.js
+[2026-03-04T16:18:29.994Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:30.001Z] GET /api/config
+[2026-03-04T16:18:30.003Z] GET /api/config
+[2026-03-04T16:18:30.423Z] GET /dashboard
+[2026-03-04T16:18:30.444Z] GET /static/css/style.css
+[2026-03-04T16:18:30.445Z] GET /static/js/auth.js
+[2026-03-04T16:18:30.445Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:30.446Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:30.461Z] GET /static/js/ai-chat.js
+[2026-03-04T16:18:30.461Z] GET /static/js/data-manager.js
+[2026-03-04T16:18:30.463Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:18:30.464Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:18:30.465Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:18:30.466Z] GET /static/js/transactions.js
+[2026-03-04T16:18:30.468Z] GET /api/config
+[2026-03-04T16:18:30.477Z] GET /login
+[2026-03-04T16:18:30.531Z] GET /static/css/style.css
+[2026-03-04T16:18:30.532Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:30.533Z] GET /static/js/auth.js
+[2026-03-04T16:18:30.533Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:30.543Z] GET /api/config
+[2026-03-04T16:18:30.545Z] GET /api/config
+[2026-03-04T16:18:30.978Z] GET /dashboard
+[2026-03-04T16:18:30.999Z] GET /static/css/style.css
+[2026-03-04T16:18:31.003Z] GET /static/js/auth.js
+[2026-03-04T16:18:31.004Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:31.005Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:31.009Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:18:31.009Z] GET /static/js/ai-chat.js
+[2026-03-04T16:18:31.010Z] GET /static/js/data-manager.js
+[2026-03-04T16:18:31.012Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:18:31.012Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:18:31.012Z] GET /static/js/transactions.js
+[2026-03-04T16:18:31.013Z] GET /api/config
+[2026-03-04T16:18:31.029Z] GET /login
+[2026-03-04T16:18:31.086Z] GET /static/css/style.css
+[2026-03-04T16:18:31.088Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:18:31.088Z] GET /static/js/auth.js
+[2026-03-04T16:18:31.088Z] GET /static/js/dashboard.js
+[2026-03-04T16:18:31.098Z] GET /api/config
+[2026-03-04T16:18:31.100Z] GET /api/config
+[2026-03-04T16:19:44.547Z] GET /login
+[2026-03-04T16:19:44.581Z] GET /static/css/style.css
+[2026-03-04T16:19:44.586Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:19:44.586Z] GET /static/js/auth.js
+[2026-03-04T16:19:44.589Z] GET /static/js/dashboard.js
+[2026-03-04T16:19:44.595Z] GET /api/config
+[2026-03-04T16:19:44.597Z] GET /api/config
+[2026-03-04T16:19:44.603Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:19:45.873Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:19:48.760Z] GET /login
+[2026-03-04T16:19:48.838Z] GET /static/css/style.css
+[2026-03-04T16:19:48.842Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:19:48.842Z] GET /static/js/auth.js
+[2026-03-04T16:19:48.842Z] GET /static/js/dashboard.js
+[2026-03-04T16:19:48.849Z] GET /api/config
+[2026-03-04T16:19:48.851Z] GET /api/config
+[2026-03-04T16:19:48.853Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:19:55.658Z] POST /api/users/login
+[2026-03-04T16:20:05.921Z] POST /api/users/login
+[2026-03-04T16:20:07.934Z] GET /login
+[2026-03-04T16:20:07.953Z] GET /static/css/style.css
+[2026-03-04T16:20:07.956Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:20:07.956Z] GET /static/js/auth.js
+[2026-03-04T16:20:07.958Z] GET /static/js/dashboard.js
+[2026-03-04T16:20:07.965Z] GET /api/config
+[2026-03-04T16:20:07.966Z] GET /api/config
+[2026-03-04T16:20:07.969Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:21:10.333Z] GET /static/css/style.css
+[2026-03-04T16:21:10.350Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:21:21.995Z] POST /api/users/login
+[2026-03-04T16:21:25.393Z] POST /api/users/login
+[2026-03-04T16:21:58.835Z] GET /login
+[2026-03-04T16:21:58.861Z] GET /static/css/style.css
+[2026-03-04T16:21:58.863Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:21:58.865Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:21:58.865Z] GET /static/js/auth.js
+[2026-03-04T16:21:58.882Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:22:09.194Z] POST /api/users/login
+Clarity Server running on Port 3000
+Clarity Server running on Port 3000
+[2026-03-04T16:25:55.201Z] GET /login
+[2026-03-04T16:25:55.244Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:25:55.251Z] GET /static/css/style.css
+[2026-03-04T16:25:55.258Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:25:55.259Z] GET /static/js/auth.js
+[2026-03-04T16:25:55.297Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:25:57.329Z] GET /register-company
+[2026-03-04T16:25:57.353Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:25:57.356Z] GET /static/css/style.css
+[2026-03-04T16:25:57.364Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:01.133Z] GET /api/companies/domain?name=ED
+[2026-03-04T16:26:01.439Z] GET /api/companies/domain?name=EDE
+[2026-03-04T16:26:01.664Z] GET /api/companies/domain?name=EDEK
+[2026-03-04T16:26:01.784Z] GET /api/companies/domain?name=EDEKA
+[2026-03-04T16:26:03.503Z] GET /signup?new_company=1&company_name=EDEKA&domain=edeka.com
+[2026-03-04T16:26:03.534Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:03.536Z] GET /static/css/style.css
+[2026-03-04T16:26:03.540Z] GET /static/js/auth.js
+[2026-03-04T16:26:03.541Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:14.665Z] POST /api/onboarding/admin
+[Onboarding] Request for: EDEKA (edeka.com), User: maximilian.priesnitz@edeka.com
+[Onboarding] Company created ID: 1
+[Onboarding] User created ID: 1
+[Onboarding] Success! Created Admin: maximilian.priesnitz@edeka.com for Company: 1
+[2026-03-04T16:26:15.969Z] GET /login
+[2026-03-04T16:26:16.045Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:16.049Z] GET /static/css/style.css
+[2026-03-04T16:26:16.052Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:16.052Z] GET /static/js/auth.js
+[2026-03-04T16:26:23.004Z] POST /api/users/login
+[Login] Attempt for: maximilian.priesnitz@edeka.com
+[Login] Success! User: maximilian.priesnitz@edeka.com, Company: EDEKA
+[2026-03-04T16:26:23.120Z] GET /dashboard
+[2026-03-04T16:26:23.149Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:23.151Z] GET /static/css/style.css
+[2026-03-04T16:26:23.158Z] GET /static/js/auth.js
+[2026-03-04T16:26:23.159Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:23.189Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:23.200Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:23.201Z] GET /static/js/data-manager.js
+[2026-03-04T16:26:23.202Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:23.205Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:26:23.207Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:23.208Z] GET /static/js/transactions.js
+[2026-03-04T16:26:23.245Z] GET /api/config
+[2026-03-04T16:26:23.546Z] GET /api/config
+[2026-03-04T16:26:23.547Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:26:23.548Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:26:34.349Z] GET /settings
+[2026-03-04T16:26:34.374Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:34.376Z] GET /static/css/style.css
+[2026-03-04T16:26:34.382Z] GET /static/js/auth.js
+[2026-03-04T16:26:34.383Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:34.384Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:34.403Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:34.404Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:34.405Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:34.406Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:34.407Z] GET /api/config
+[2026-03-04T16:26:34.447Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:34.449Z] GET /api/config
+[2026-03-04T16:26:34.852Z] GET /admin
+[2026-03-04T16:26:34.891Z] GET /static/css/style.css
+[2026-03-04T16:26:34.903Z] GET /static/js/auth.js
+[2026-03-04T16:26:34.903Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:34.904Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:34.906Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:34.913Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:34.918Z] GET /api/config
+[2026-03-04T16:26:34.920Z] GET /api/invites?company_id=1
+[2026-03-04T16:26:34.921Z] GET /api/users?company_id=1
+[2026-03-04T16:26:34.929Z] GET /api/config
+[2026-03-04T16:26:35.995Z] GET /settings
+[2026-03-04T16:26:36.033Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:36.036Z] GET /static/css/style.css
+[2026-03-04T16:26:36.041Z] GET /static/js/auth.js
+[2026-03-04T16:26:36.041Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:36.041Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:36.072Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:36.084Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:36.086Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:36.105Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:36.106Z] GET /api/config
+[2026-03-04T16:26:36.460Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:36.465Z] GET /api/config
+[2026-03-04T16:26:38.515Z] GET /settings
+[2026-03-04T16:26:38.545Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:38.548Z] GET /static/css/style.css
+[2026-03-04T16:26:38.550Z] GET /static/js/auth.js
+[2026-03-04T16:26:38.550Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:38.551Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:38.571Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:38.571Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:38.573Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:38.585Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:38.586Z] GET /api/config
+[2026-03-04T16:26:38.635Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:38.639Z] GET /api/config
+[2026-03-04T16:26:39.369Z] GET /settings
+[2026-03-04T16:26:39.407Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:39.409Z] GET /static/css/style.css
+[2026-03-04T16:26:39.412Z] GET /static/js/auth.js
+[2026-03-04T16:26:39.412Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:39.413Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:39.436Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:39.436Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:39.438Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:39.450Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:39.451Z] GET /api/config
+[2026-03-04T16:26:39.496Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:39.499Z] GET /api/config
+[2026-03-04T16:26:40.025Z] GET /settings
+[2026-03-04T16:26:40.067Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:40.071Z] GET /static/css/style.css
+[2026-03-04T16:26:40.074Z] GET /static/js/auth.js
+[2026-03-04T16:26:40.074Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:40.076Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:40.094Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:40.096Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:40.096Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:40.109Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:40.110Z] GET /api/config
+[2026-03-04T16:26:40.154Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:40.159Z] GET /api/config
+[2026-03-04T16:26:40.835Z] GET /admin
+[2026-03-04T16:26:40.883Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:40.885Z] GET /static/css/style.css
+[2026-03-04T16:26:40.889Z] GET /static/js/auth.js
+[2026-03-04T16:26:40.890Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:40.890Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:40.908Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:40.913Z] GET /api/config
+[2026-03-04T16:26:40.915Z] GET /api/invites?company_id=1
+[2026-03-04T16:26:40.916Z] GET /api/users?company_id=1
+[2026-03-04T16:26:40.923Z] GET /api/config
+[2026-03-04T16:26:42.065Z] GET /settings
+[2026-03-04T16:26:42.119Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:42.122Z] GET /static/css/style.css
+[2026-03-04T16:26:42.127Z] GET /static/js/auth.js
+[2026-03-04T16:26:42.127Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:42.128Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:42.153Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:42.154Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:42.155Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:42.168Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:42.169Z] GET /api/config
+[2026-03-04T16:26:42.218Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:42.224Z] GET /api/config
+[2026-03-04T16:26:51.992Z] DELETE /api/users/1?company_id=1
+[2026-03-04T16:26:55.022Z] GET /admin
+[2026-03-04T16:26:55.111Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:55.115Z] GET /static/css/style.css
+[2026-03-04T16:26:55.121Z] GET /static/js/auth.js
+[2026-03-04T16:26:55.121Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:55.122Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:55.135Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:55.146Z] GET /api/config
+[2026-03-04T16:26:55.148Z] GET /api/invites?company_id=1
+[2026-03-04T16:26:55.149Z] GET /api/users?company_id=1
+[2026-03-04T16:26:55.155Z] GET /api/config
+[2026-03-04T16:26:59.134Z] GET /settings
+[2026-03-04T16:26:59.159Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:26:59.165Z] GET /static/css/style.css
+[2026-03-04T16:26:59.172Z] GET /static/js/auth.js
+[2026-03-04T16:26:59.172Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:26:59.173Z] GET /static/js/dashboard.js
+[2026-03-04T16:26:59.193Z] GET /static/js/ai-chat.js
+[2026-03-04T16:26:59.193Z] GET /static/js/settings-search.js
+[2026-03-04T16:26:59.197Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:26:59.206Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:59.207Z] GET /api/config
+[2026-03-04T16:26:59.259Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:26:59.266Z] GET /api/config
+[2026-03-04T16:27:02.084Z] GET /admin
+[2026-03-04T16:27:02.120Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:27:02.122Z] GET /static/css/style.css
+[2026-03-04T16:27:02.125Z] GET /static/js/auth.js
+[2026-03-04T16:27:02.126Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:02.127Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:02.140Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:27:02.143Z] GET /api/config
+[2026-03-04T16:27:02.145Z] GET /api/invites?company_id=1
+[2026-03-04T16:27:02.146Z] GET /api/users?company_id=1
+[2026-03-04T16:27:02.160Z] GET /api/config
+[2026-03-04T16:27:08.170Z] POST /api/invites
+[2026-03-04T16:27:09.216Z] GET /api/invites?company_id=1
+[2026-03-04T16:27:13.514Z] GET /signup?invite_code=A1761AFB
+[2026-03-04T16:27:13.543Z] GET /static/css/style.css
+[2026-03-04T16:27:13.548Z] GET /static/js/auth.js
+[2026-03-04T16:27:13.549Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:13.567Z] GET /api/invites/validate?code=A1761AFB
+[2026-03-04T16:27:25.923Z] POST /api/users/signup
+[2026-03-04T16:27:27.257Z] GET /login
+[2026-03-04T16:27:27.277Z] GET /static/css/style.css
+[2026-03-04T16:27:27.279Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:27.279Z] GET /static/js/auth.js
+[2026-03-04T16:27:39.645Z] POST /api/users/login
+[Login] Attempt for: john.doe@edeka.com
+[Login] Success! User: john.doe@edeka.com, Company: EDEKA
+[2026-03-04T16:27:39.760Z] GET /dashboard
+[2026-03-04T16:27:39.785Z] GET /static/css/style.css
+[2026-03-04T16:27:39.786Z] GET /static/js/auth.js
+[2026-03-04T16:27:39.788Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:39.803Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:39.804Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:39.805Z] GET /static/js/data-manager.js
+[2026-03-04T16:27:39.806Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:39.807Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:27:39.807Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:39.808Z] GET /static/js/transactions.js
+[2026-03-04T16:27:39.820Z] GET /api/config
+[2026-03-04T16:27:39.862Z] GET /api/config
+[2026-03-04T16:27:39.867Z] GET /api/transactions?limit=10000&user_id=2&company_id=1
+[2026-03-04T16:27:39.868Z] GET /api/transactions?limit=25&offset=0&user_id=2&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:27:42.302Z] GET /settings
+[2026-03-04T16:27:42.321Z] GET /static/css/style.css
+[2026-03-04T16:27:42.323Z] GET /static/js/auth.js
+[2026-03-04T16:27:42.323Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:42.323Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:42.340Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:42.341Z] GET /static/js/settings-search.js
+[2026-03-04T16:27:42.342Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:42.343Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:42.344Z] GET /api/config
+[2026-03-04T16:27:42.354Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:42.357Z] GET /api/config
+[2026-03-04T16:27:43.600Z] GET /
+[2026-03-04T16:27:43.623Z] GET /static/css/style.css
+[2026-03-04T16:27:43.625Z] GET /static/js/auth.js
+[2026-03-04T16:27:43.625Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:43.626Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:43.637Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:43.638Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:43.644Z] GET /api/config
+[2026-03-04T16:27:43.651Z] GET /api/config
+[2026-03-04T16:27:46.192Z] GET /admin
+[2026-03-04T16:27:46.215Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:27:46.218Z] GET /static/css/style.css
+[2026-03-04T16:27:46.220Z] GET /static/js/auth.js
+[2026-03-04T16:27:46.221Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:46.221Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:46.231Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:46.241Z] GET /dashboard
+[2026-03-04T16:27:46.265Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:27:46.269Z] GET /static/css/style.css
+[2026-03-04T16:27:46.272Z] GET /static/js/auth.js
+[2026-03-04T16:27:46.273Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:46.273Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:46.315Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:46.318Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:46.318Z] GET /static/js/data-manager.js
+[2026-03-04T16:27:46.319Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:46.322Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:27:46.324Z] GET /static/js/transactions.js
+[2026-03-04T16:27:46.366Z] GET /api/config
+[2026-03-04T16:27:46.426Z] GET /api/config
+[2026-03-04T16:27:46.429Z] GET /api/transactions?limit=10000&user_id=2&company_id=1
+[2026-03-04T16:27:46.430Z] GET /api/transactions?limit=25&offset=0&user_id=2&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:27:51.490Z] GET /settings
+[2026-03-04T16:27:51.569Z] GET /.well-known/appspecific/com.chrome.devtools.json
+[2026-03-04T16:27:51.573Z] GET /static/css/style.css
+[2026-03-04T16:27:51.576Z] GET /static/js/auth.js
+[2026-03-04T16:27:51.577Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:51.580Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:51.602Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:51.603Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:51.607Z] GET /static/js/settings-search.js
+[2026-03-04T16:27:51.617Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:51.618Z] GET /api/config
+[2026-03-04T16:27:51.670Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:51.674Z] GET /api/config
+[2026-03-04T16:27:57.272Z] GET /support
+[2026-03-04T16:27:57.296Z] GET /static/css/style.css
+[2026-03-04T16:27:57.302Z] GET /static/js/auth.js
+[2026-03-04T16:27:57.302Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:57.303Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:57.308Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:57.315Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:57.315Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:57.323Z] GET /api/config
+[2026-03-04T16:27:57.324Z] GET /api/config
+[2026-03-04T16:27:58.039Z] GET /
+[2026-03-04T16:27:58.066Z] GET /static/css/style.css
+[2026-03-04T16:27:58.077Z] GET /static/js/auth.js
+[2026-03-04T16:27:58.078Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:58.078Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:58.079Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:58.088Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:58.089Z] GET /api/config
+[2026-03-04T16:27:58.099Z] GET /api/config
+[2026-03-04T16:27:59.245Z] GET /dashboard
+[2026-03-04T16:27:59.275Z] GET /static/css/style.css
+[2026-03-04T16:27:59.277Z] GET /static/js/auth.js
+[2026-03-04T16:27:59.277Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:27:59.278Z] GET /static/js/dashboard.js
+[2026-03-04T16:27:59.289Z] GET /api/config?user_id=2&company_id=1
+[2026-03-04T16:27:59.290Z] GET /static/js/ai-chat.js
+[2026-03-04T16:27:59.291Z] GET /static/js/data-manager.js
+[2026-03-04T16:27:59.292Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:27:59.294Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:27:59.295Z] GET /api/config
+[2026-03-04T16:27:59.295Z] GET /static/js/transactions.js
+[2026-03-04T16:27:59.304Z] GET /api/config
+[2026-03-04T16:27:59.305Z] GET /api/transactions?limit=10000&user_id=2&company_id=1
+[2026-03-04T16:27:59.306Z] GET /api/transactions?limit=25&offset=0&user_id=2&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:28:05.087Z] GET /logout
+[2026-03-04T16:28:05.113Z] GET /login
+[2026-03-04T16:28:05.155Z] GET /static/css/style.css
+[2026-03-04T16:28:05.157Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:28:05.157Z] GET /static/js/auth.js
+[2026-03-04T16:28:09.843Z] POST /api/users/login
+[Login] Attempt for: maximilian.priesnitz@edeka.com
+[Login] Success! User: maximilian.priesnitz@edeka.com, Company: EDEKA
+[2026-03-04T16:28:09.956Z] GET /dashboard
+[2026-03-04T16:28:09.978Z] GET /static/css/style.css
+[2026-03-04T16:28:09.984Z] GET /static/js/auth.js
+[2026-03-04T16:28:09.984Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:28:09.985Z] GET /static/js/dashboard.js
+[2026-03-04T16:28:09.986Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:28:09.991Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:28:09.991Z] GET /static/js/ai-chat.js
+[2026-03-04T16:28:09.992Z] GET /static/js/data-manager.js
+[2026-03-04T16:28:09.994Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:28:09.994Z] GET /static/js/transactions.js
+[2026-03-04T16:28:09.996Z] GET /api/config
+[2026-03-04T16:28:10.006Z] GET /api/config
+[2026-03-04T16:28:10.007Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:28:10.008Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:28:16.002Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:28:59.613Z] POST /api/transactions
+[2026-03-04T16:28:59.619Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:28:59.619Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:29:14.288Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:32:39.225Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:32:39.765Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:32:39.765Z] GET /api/transactions?limit=20&date=2026-03-04
+Error: Valid Company ID required.
+    at getCompanyDb (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/server.js:19:47)
+    at /Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/server.js:421:17
+    at Layer.handle [as handle_request] (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/layer.js:95:5)
+    at next (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/route.js:149:13)
+    at Route.dispatch (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/route.js:119:3)
+    at Layer.handle [as handle_request] (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/layer.js:95:5)
+    at /Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/index.js:284:15
+    at router.process_params (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/index.js:346:12)
+    at next (/Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/node_modules/express/lib/router/index.js:280:10)
+    at /Users/maximilian/Documents/Code/SAP-Winterpraktikum/SAP-Praktikum/server.js:62:5
+[2026-03-04T16:32:39.767Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+Clarity Server running on Port 3000
+[2026-03-04T16:34:07.262Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:34:10.206Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:35:53.907Z] GET /dashboard
+[2026-03-04T16:35:53.927Z] GET /static/css/style.css
+[2026-03-04T16:35:53.932Z] GET /static/js/auth.js
+[2026-03-04T16:35:53.933Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:35:53.943Z] GET /static/js/dashboard.js
+[2026-03-04T16:35:53.943Z] GET /static/js/ai-chat.js
+[2026-03-04T16:35:53.946Z] GET /static/js/transactions.js
+[2026-03-04T16:35:53.948Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:35:53.949Z] GET /api/config
+[2026-03-04T16:35:53.952Z] GET /static/js/data-manager.js
+[2026-03-04T16:35:53.953Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:35:53.954Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:35:53.994Z] GET /api/config
+[2026-03-04T16:35:53.995Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:35:53.996Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:35:54.366Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:35:55.960Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:35:56.307Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:35:56.309Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:35:56.309Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:35:56.312Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:35:56.734Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:35:56.734Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:35:56.735Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:35:56.747Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:35:57.106Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:35:57.107Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:35:57.107Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:35:57.118Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:36:05.547Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:37:48.768Z] GET /dashboard
+[2026-03-04T16:37:48.788Z] GET /static/css/style.css
+[2026-03-04T16:37:48.793Z] GET /static/js/auth.js
+[2026-03-04T16:37:48.793Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:37:48.804Z] GET /static/js/dashboard.js
+[2026-03-04T16:37:48.804Z] GET /static/js/ai-chat.js
+[2026-03-04T16:37:48.806Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:37:48.807Z] GET /static/js/data-manager.js
+[2026-03-04T16:37:48.808Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:37:48.808Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:37:48.809Z] GET /static/js/transactions.js
+[2026-03-04T16:37:48.810Z] GET /api/config
+[2026-03-04T16:37:48.862Z] GET /api/config
+[2026-03-04T16:37:48.865Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:37:48.866Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:37:49.245Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:37:57.155Z] GET /api/transactions?limit=25&offset=25&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:38:00.215Z] GET /api/transactions?limit=25&offset=50&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:38:29.004Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:38:45.446Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:38:51.318Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:38:51.877Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:38:51.878Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:38:51.878Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:38:51.902Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:38:52.373Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:38:52.373Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:38:52.374Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:38:52.388Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:38:53.032Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:38:53.033Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:38:53.033Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:38:53.051Z] POST /api/chat
+[CHAT] Request from user_id: 1, company_id: 1
+[CHAT] User nickname identified: Maximilian
+[CHAT] Sending request to Groq API...
+[CHAT] Groq response received successfully.
+[2026-03-04T16:39:04.811Z] GET /api/transactions?limit=25&offset=25&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:39:22.783Z] GET /admin
+[2026-03-04T16:39:22.821Z] GET /static/css/style.css
+[2026-03-04T16:39:22.823Z] GET /static/js/auth.js
+[2026-03-04T16:39:22.823Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:39:22.824Z] GET /static/js/dashboard.js
+[2026-03-04T16:39:22.838Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:39:22.841Z] GET /api/config
+[2026-03-04T16:39:22.842Z] GET /api/invites?company_id=1
+[2026-03-04T16:39:22.843Z] GET /api/users?company_id=1
+[2026-03-04T16:39:22.844Z] GET /api/config
+[2026-03-04T16:39:26.935Z] GET /dashboard
+[2026-03-04T16:39:26.956Z] GET /static/css/style.css
+[2026-03-04T16:39:26.960Z] GET /static/js/auth.js
+[2026-03-04T16:39:26.962Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:39:26.980Z] GET /static/js/dashboard.js
+[2026-03-04T16:39:26.981Z] GET /static/js/ai-chat.js
+[2026-03-04T16:39:26.982Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:39:26.983Z] GET /static/js/data-manager.js
+[2026-03-04T16:39:26.985Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:39:26.986Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:39:26.987Z] GET /static/js/transactions.js
+[2026-03-04T16:39:26.988Z] GET /api/config
+[2026-03-04T16:39:27.040Z] GET /api/config
+[2026-03-04T16:39:27.041Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:39:27.041Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:41:32.230Z] GET /settings
+[2026-03-04T16:41:32.254Z] GET /static/css/style.css
+[2026-03-04T16:41:32.264Z] GET /static/js/auth.js
+[2026-03-04T16:41:32.264Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:41:32.265Z] GET /static/js/dashboard.js
+[2026-03-04T16:41:32.273Z] GET /static/js/ai-chat.js
+[2026-03-04T16:41:32.273Z] GET /static/js/settings-search.js
+[2026-03-04T16:41:32.274Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:41:32.275Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:41:32.277Z] GET /api/config
+[2026-03-04T16:41:32.315Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:41:32.319Z] GET /api/config
+[2026-03-04T16:41:37.630Z] GET /dashboard
+[2026-03-04T16:41:37.652Z] GET /static/css/style.css
+[2026-03-04T16:41:37.656Z] GET /static/js/auth.js
+[2026-03-04T16:41:37.657Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:41:37.667Z] GET /static/js/dashboard.js
+[2026-03-04T16:41:37.668Z] GET /static/js/ai-chat.js?v=0.3.9
+[2026-03-04T16:41:37.670Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:41:37.671Z] GET /static/js/data-manager.js
+[2026-03-04T16:41:37.671Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:41:37.672Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:41:37.674Z] GET /static/js/transactions.js
+[2026-03-04T16:41:37.679Z] GET /api/config
+[2026-03-04T16:41:37.722Z] GET /api/config
+[2026-03-04T16:41:37.726Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:41:37.727Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+Clarity Server running on Port 3000
+[2026-03-04T16:43:14.246Z] GET /dashboard
+[2026-03-04T16:43:14.286Z] GET /static/css/style.css
+[2026-03-04T16:43:14.290Z] GET /static/js/auth.js
+[2026-03-04T16:43:14.291Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:43:14.301Z] GET /static/js/dashboard.js
+[2026-03-04T16:43:14.305Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:43:14.309Z] GET /static/js/data-manager.js
+[2026-03-04T16:43:14.309Z] GET /static/js/ai-chat.js?v=0.3.9
+[2026-03-04T16:43:14.311Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:43:14.317Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:43:14.318Z] GET /api/config
+[2026-03-04T16:43:14.325Z] GET /static/js/transactions.js
+[2026-03-04T16:43:14.365Z] GET /api/config
+[2026-03-04T16:43:14.367Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:43:14.369Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:43:14.373Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:43:28.170Z] POST /api/chat
+[2026-03-04T16:43:28.670Z] GET /api/transactions?limit=20&company_id=1&user_id=1
+[2026-03-04T16:43:28.671Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:43:28.672Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:43:28.675Z] POST /api/chat
+[2026-03-04T16:43:29.168Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:43:29.169Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:43:29.169Z] GET /api/transactions?limit=20&company_id=1&user_id=1
+[2026-03-04T16:43:29.185Z] POST /api/chat
+[2026-03-04T16:43:29.618Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:43:29.618Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:43:29.619Z] GET /api/transactions?limit=20&company_id=1&user_id=1
+[2026-03-04T16:43:29.635Z] POST /api/chat
+[2026-03-04T16:44:48.447Z] GET /dashboard
+[2026-03-04T16:44:48.468Z] GET /static/css/style.css
+[2026-03-04T16:44:48.473Z] GET /static/js/auth.js
+[2026-03-04T16:44:48.474Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:44:48.486Z] GET /static/js/dashboard.js
+[2026-03-04T16:44:48.487Z] GET /static/js/ai-chat.js?v=0.3.9
+[2026-03-04T16:44:48.490Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:44:48.492Z] GET /static/js/transactions.js
+[2026-03-04T16:44:48.493Z] GET /static/js/data-manager.js
+[2026-03-04T16:44:48.494Z] GET /api/config
+[2026-03-04T16:44:48.496Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:44:48.497Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:44:48.544Z] GET /api/config
+[2026-03-04T16:44:48.547Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:44:48.548Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:44:48.552Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:46:43.887Z] GET /dashboard
+[2026-03-04T16:46:43.909Z] GET /static/css/style.css
+[2026-03-04T16:46:43.913Z] GET /static/js/auth.js
+[2026-03-04T16:46:43.914Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:46:43.915Z] GET /static/js/dashboard.js
+[2026-03-04T16:46:43.925Z] GET /static/js/ai-chat.js?v=0.3.9
+[2026-03-04T16:46:43.925Z] GET /static/js/data-manager.js
+[2026-03-04T16:46:43.927Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:46:43.929Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:46:43.930Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:46:43.931Z] GET /static/js/transactions.js
+[2026-03-04T16:46:43.932Z] GET /api/config
+[2026-03-04T16:46:43.982Z] GET /api/config
+[2026-03-04T16:46:43.986Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:46:43.987Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:46:43.990Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:46:48.045Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:46:50.527Z] GET /api/transactions?limit=25&offset=25&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:46:56.849Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:46:57.553Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:46:58.266Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:46:58.746Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:46:59.224Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:46:59.768Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:47:00.264Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:47:00.665Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:47:01.089Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:47:01.528Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:47:01.967Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:47:02.329Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:47:02.504Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=ASC
+[2026-03-04T16:47:02.983Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=wert&order=ASC
+[2026-03-04T16:47:03.423Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=wert&order=DESC
+[2026-03-04T16:47:04.191Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=empfaenger&order=ASC
+[2026-03-04T16:47:04.646Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=empfaenger&order=DESC
+[2026-03-04T16:47:05.372Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=sender&order=ASC
+[2026-03-04T16:47:05.710Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=sender&order=DESC
+[2026-03-04T16:47:06.437Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=kategorie&order=ASC
+[2026-03-04T16:47:06.846Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=kategorie&order=DESC
+[2026-03-04T16:47:07.646Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=kategorie&order=DESC
+[2026-03-04T16:47:08.413Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:47:31.052Z] GET /dashboard
+[2026-03-04T16:47:31.079Z] GET /static/css/style.css
+[2026-03-04T16:47:31.082Z] GET /static/js/auth.js
+[2026-03-04T16:47:31.083Z] GET /assets/pictures/clarity_logo.png
+[2026-03-04T16:47:31.085Z] GET /static/js/dashboard.js
+[2026-03-04T16:47:31.096Z] GET /static/js/ai-chat.js?v=0.3.9
+[2026-03-04T16:47:31.097Z] GET /static/js/data-manager.js
+[2026-03-04T16:47:31.098Z] GET /api/config?user_id=1&company_id=1
+[2026-03-04T16:47:31.099Z] GET /assets/icons/joule_logo.png
+[2026-03-04T16:47:31.102Z] GET /static/js/dashboard-metrics.js
+[2026-03-04T16:47:31.103Z] GET /static/js/transactions.js
+[2026-03-04T16:47:31.104Z] GET /api/config
+[2026-03-04T16:47:31.160Z] GET /api/config
+[2026-03-04T16:47:31.163Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:47:31.164Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
+[2026-03-04T16:47:31.168Z] GET /assets/pictures/favicon.png
+[2026-03-04T16:48:15.458Z] POST /api/chat
+[2026-03-04T16:48:15.885Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:48:15.886Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:48:15.886Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:48:15.909Z] POST /api/chat
+[2026-03-04T16:48:16.242Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&date=2026-03-04&sort=timestamp&order=DESC
+[2026-03-04T16:48:16.242Z] GET /api/transactions?limit=10000&user_id=1&company_id=1
+[2026-03-04T16:48:16.243Z] GET /api/transactions?limit=20&company_id=1&user_id=1&date=2026-03-04
+[2026-03-04T16:48:16.257Z] POST /api/chat
+[2026-03-04T16:48:30.838Z] GET /api/transactions?limit=25&offset=0&user_id=1&company_id=1&sort=timestamp&order=DESC
