@@ -5,347 +5,291 @@
     const userStr = localStorage.getItem('clarityUser');
     let userId = 'guest';
     let companyId = null;
+    let userName = 'User';
     if (userStr) {
         try {
             const user = JSON.parse(userStr);
             if (user.id) userId = user.id;
             if (user.company_id) companyId = user.company_id;
+            if (user.full_name) userName = user.full_name;
         } catch(e) {}
     }
 
-    const STORAGE_KEY = `joule_chat_history_${userId}`;
-    const SYSTEM_PROMPT = `You are Joule, the highly specialized AI core of "Clarity" (Financial Intelligence Platform).
-Your task is to support users in analyzing their finances.
-
-### CORE DIRECTIVE:
-When a user asks about their transactions, you MUST use the QUERY tool to fetch the latest data. 
-After receiving the research results, provide a helpful summary. Do NOT repeat the research if you already have the data.
-
-### STYLE GUIDELINES:
-- **STRICT VISUAL CLEANLINESS:** NEVER include JSON, tool calls, or technical fragments like {"date": "..."} in the text visible to the user.
-- **BREVITY:** Maximum 3 sentences per response.
-
-### TECHNICAL COMMANDS (HIDDEN):
-Place tool calls on a NEW LINE at the VERY END of your response. 
-Format: KEYWORD:{"json": "data"}
-Available keywords: QUERY, ADD_TRANSACTION.`;
-
+    const STORAGE_KEY = `clair_chat_history_${userId}`;
     let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    let activeAttachment = null;
     let isPanelOpen = false;
+
+    const SYSTEM_PROMPT = `You are Clair, an intelligent financial advisor for "Clarity". 
+Address the user naturally. 
+
+### DIRECTIVES:
+1. To SEARCH: add QUERY:{"category": "string", "date": "YYYY-MM-DD", "name": "search term"}
+2. To ADD TRANSACTION: add ADD_TRANSACTION:{"name": "Item", "amount": -12.99, "category": "Groceries", "date": "ISO8601"}
+   - EXPENSES must be NEGATIVE numbers (e.g., -2.99 for milk).
+   - INCOME must be POSITIVE.
+3. Add these markers at the VERY END of your message.
+4. Never show technical JSON to the user.
+5. Brevity: max 3 sentences.`;
 
     document.body.insertAdjacentHTML('beforeend', `
         <div class="ai-chat-overlay" id="aiChatOverlay"></div>
-        <div class="joule-help-bubble" id="jouleHelpBubble">
-            Brauchst du Hilfe?
-            <span class="joule-help-bubble-close" id="jouleHelpBubbleClose">&times;</span>
-        </div>
-        <aside class="ai-chat-panel" id="aiChatPanel" aria-label="Joule">
+        <aside class="ai-chat-panel" id="aiChatPanel" aria-label="Clair">
             <div class="ai-chat-header">
-                <div class="ai-chat-title">
-                    <span class="ai-chat-icon">
-                        <img src="../assets/icons/joule_logo.png" alt="KI-Assistent">
-                    </span>
-                    <span>Joule</span>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="ai-chat-clear" id="aiChatClear" title="Neuer Chat" style="background:none; border:none; color:white; cursor:pointer; display: flex; align-items: center; padding: 0 5px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 3 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </button>
-                    <button class="ai-chat-close" id="aiChatClose" aria-label="Schließen" style="background:none; border:none; color:white; cursor:pointer; font-size:26px; line-height:1;">&times;</button>
+                <div class="ai-chat-header-content">
+                    <div class="ai-chat-title" id="aiChatTitle" style="cursor:pointer" title="Über Clair">
+                        <div class="ai-chat-icon-container">
+                            <img src="../assets/icons/joule_logo.png" alt="Clair">
+                            <div class="ai-chat-online-indicator"></div>
+                        </div>
+                        <div class="ai-chat-title-text">
+                            <span class="ai-chat-name">Clair</span>
+                            <span class="ai-chat-status">KI-Assistent</span>
+                        </div>
+                    </div>
+                    <div class="ai-chat-controls">
+                        <button id="aiChatClear" class="ai-chat-control-btn" title="Chat löschen">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                        </button>
+                        <button id="aiChatClose" class="ai-chat-control-btn ai-chat-close-btn" title="Schließen">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
+            
             <div class="ai-chat-messages" id="aiChatMessages"></div>
             
-            <div id="aiChatAttachmentArea" style="display:none; padding: 10px 16px; background: #f3f0ff; border-top: 1px solid #ece8f5;">
-                <div class="attachment-chip" style="display: inline-flex; align-items: center; background: white; border: 1px solid #6f42c1; border-radius: 12px; padding: 4px 10px; font-size: 12px; color: #6f42c1; font-weight: bold;">
-                    <span id="aiChatAttachmentName">Transaction</span>
-                    <span id="aiChatRemoveAttachment" style="margin-left: 8px; cursor: pointer; font-size: 14px;">&times;</span>
+            <div class="ai-chat-footer">
+                <div class="ai-chat-input-area">
+                    <div class="ai-chat-input-wrapper">
+                        <textarea id="aiChatInput" placeholder="Frage Clair..." rows="1"></textarea>
+                        <button id="aiChatSend" class="ai-chat-send-button" title="Senden">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                    <div class="ai-chat-disclaimer">Clair kann Fehler machen. Überprüfe wichtige Infos.</div>
                 </div>
             </div>
-
-            <div class="ai-chat-input-area">
-                <textarea class="ai-chat-input" id="aiChatInput" placeholder="Nachricht eingeben…" rows="1"></textarea>
-                <button class="ai-chat-send" id="aiChatSend" aria-label="Senden">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
-                </button>
-            </div>
         </aside>
+
+        <!-- Clair Profile Modal -->
+        <div class="clair-profile-modal" id="clairProfileModal">
+            <div class="clair-profile-overlay" id="clairProfileOverlay"></div>
+            <div class="clair-profile-card">
+                <button class="clair-profile-close" id="clairProfileClose">&times;</button>
+                <div class="clair-profile-header">
+                    <div class="clair-profile-avatar">
+                        <img src="../assets/icons/joule_logo.png" alt="Clair">
+                    </div>
+                    <h2>Clair</h2>
+                    <p>Finanz-Expertin & KI-Assistentin</p>
+                </div>
+                <div class="clair-profile-body">
+                    <div class="clair-info-item">
+                        <div class="clair-info-icon">🧠</div>
+                        <div class="clair-info-text">
+                            <strong>Expertise</strong>
+                            <span>Finanzanalyse, Budgetierung, Ausgabentrends</span>
+                        </div>
+                    </div>
+                    <div class="clair-info-item">
+                        <div class="clair-info-icon">⚡</div>
+                        <div class="clair-info-text">
+                            <strong>Reaktionszeit</strong>
+                            <span>Echtzeit (Millisekunden)</span>
+                        </div>
+                    </div>
+                    <div class="clair-info-item">
+                        <div class="clair-info-icon">🔐</div>
+                        <div class="clair-info-text">
+                            <strong>Datenschutz</strong>
+                            <span>Sicher & verschlüsselt</span>
+                        </div>
+                    </div>
+                    <div class="clair-info-bio">
+                        Clair ist deine persönliche KI-Assistentin bei Clarity. Sie hilft dir dabei, deine Finanzen besser zu verstehen, Anomalien zu erkennen und kluge finanzielle Entscheidungen zu treffen.
+                    </div>
+                </div>
+                <div class="clair-profile-footer">
+                    <button class="clair-contact-btn" id="clairContactAction">Chat starten</button>
+                </div>
+            </div>
+        </div>
     `);
 
     const panel = document.getElementById('aiChatPanel');
     const overlay = document.getElementById('aiChatOverlay');
-    const helpBubble = document.getElementById('jouleHelpBubble');
-    const helpBubbleClose = document.getElementById('jouleHelpBubbleClose');
-    const closeBtn = document.getElementById('aiChatClose');
-    const clearBtn = document.getElementById('aiChatClear');
+    const messagesContainer = document.getElementById('aiChatMessages');
     const input = document.getElementById('aiChatInput');
     const sendBtn = document.getElementById('aiChatSend');
-    const messagesContainer = document.getElementById('aiChatMessages');
-    const attachmentArea = document.getElementById('aiChatAttachmentArea');
-    const attachmentName = document.getElementById('aiChatAttachmentName');
-    const removeAttachment = document.getElementById('aiChatRemoveAttachment');
-
-    function saveHistory() { 
-        const persistentHistory = chatHistory.filter(m => 
-            !m.content.includes("ERGEBNIS DER RECHERCHE") && 
-            !m.content.includes("AKTION ERFOLGREICH") &&
-            m.role !== 'system'
-        );
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(persistentHistory)); 
-    }
+    const clearBtn = document.getElementById('aiChatClear');
+    const closeBtn = document.getElementById('aiChatClose');
+    
+    // Profile Modal Elements
+    const chatTitle = document.getElementById('aiChatTitle');
+    const profileModal = document.getElementById('clairProfileModal');
+    const profileOverlay = document.getElementById('clairProfileOverlay');
+    const profileClose = document.getElementById('clairProfileClose');
+    const contactAction = document.getElementById('clairContactAction');
 
     function openChat() { 
         panel.classList.add('open'); 
         overlay.classList.add('open'); 
         isPanelOpen = true; 
-        toggleNotificationDot(false);
-        if (helpBubble) helpBubble.style.display = 'none';
+        input.focus();
     }
-    
-    function closeChat() { 
-        panel.classList.remove('open'); 
-        overlay.classList.remove('open'); 
-        isPanelOpen = false; 
-    }
+    function closeChat() { panel.classList.remove('open'); overlay.classList.remove('open'); isPanelOpen = false; }
 
-    if (closeBtn) closeBtn.addEventListener('click', closeChat);
-    if (overlay) overlay.addEventListener('click', closeChat);
+    function openProfile() { profileModal.classList.add('open'); }
+    function closeProfile() { profileModal.classList.remove('open'); }
 
-    function toggleNotificationDot(show) {
-        const btn = document.querySelector('.diamond-btn');
-        if (btn) btn.classList.toggle('has-notification', show);
-    }
+    chatTitle.onclick = openProfile;
+    profileOverlay.onclick = closeProfile;
+    profileClose.onclick = closeProfile;
+    contactAction.onclick = () => { closeProfile(); openChat(); };
 
-    if (helpBubbleClose) {
-        helpBubbleClose.onclick = (e) => { e.stopPropagation(); helpBubble.style.display = 'none'; isBubbleDismissed = true; };
-    }
-
-    function resetInactivityTimer() {
-        clearTimeout(inactivityTimer);
-        if (isBubbleDismissed) return;
-        inactivityTimer = setTimeout(() => {
-            if (!isPanelOpen && helpBubble) helpBubble.classList.add('visible');
-        }, 30000);
-    }
-
-    clearBtn.onclick = () => {
-        if (confirm("Chat-Verlauf wirklich löschen?")) {
-            chatHistory = [];
-            localStorage.removeItem(STORAGE_KEY);
-            messagesContainer.innerHTML = "";
-            appendMessage("Hallo! Ich bin Joule. Wie kann ich dir heute helfen?", "assistant", null, true);
-        }
+    overlay.onclick = closeChat;
+    closeBtn.onclick = closeChat;
+    clearBtn.onclick = () => { 
+        if(confirm("Möchtest du den gesamten Chat-Verlauf löschen?")) { 
+            chatHistory=[]; 
+            localStorage.removeItem(STORAGE_KEY); 
+            messagesContainer.innerHTML=""; 
+            appendMessage("Hallo! Ich bin Clair. Wie kann ich dir heute bei deinen Finanzen helfen?", "assistant"); 
+        } 
     };
 
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChat(); });
+    document.addEventListener('attachToClair', (e) => {
+        const t = e.detail.transaction;
+        if (!t) return;
+        openChat();
+        input.value = `Ich habe eine Frage zu dieser Transaktion: ${t.kategorie} (${t.wert}€) vom ${new Date(t.timestamp).toLocaleDateString()}. `;
+        input.focus();
+        input.style.height = 'auto';
+        input.style.height = input.scrollHeight + 'px';
+    });
 
-    function setupButton() {
-        const diamondBtn = document.querySelector('.diamond-btn');
-        if (diamondBtn) diamondBtn.onclick = openChat;
-        else setTimeout(setupButton, 100);
-    }
-    setupButton();
+    const setupBtn = () => { 
+        const b = document.querySelector('.diamond-btn'); 
+        if(b) b.onclick = openChat; 
+        else setTimeout(setupBtn, 100); 
+    };
+    setupBtn();
 
-    input.oninput = function () { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 120) + 'px'; };
+    input.oninput = function () { 
+        this.style.height = 'auto'; 
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px'; 
+    };
     input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     sendBtn.onclick = sendMessage;
 
-    document.addEventListener('attachToJoule', (e) => {
-        const t = e.detail.transaction;
-        activeAttachment = t;
-        attachmentName.textContent = `${t.name || t.kategorie} (${parseFloat(t.wert).toFixed(2)}€)`;
-        attachmentArea.style.display = 'block';
-        openChat();
-    });
+    function appendMessage(text, role, save = true, timestamp = null) {
+        if (!text) return;
+        let cleanText = text.replace(/(QUERY|ADD_TRANSACTION):[\s\n]*\{[\s\S]*?\}/gi, '').trim();
+        if (!cleanText && role === 'assistant') return;
 
-    removeAttachment.onclick = () => { activeAttachment = null; attachmentArea.style.display = 'none'; };
-
-    function appendMessage(text, role, attachment = null, save = true) {
-        if (!text && !attachment) return false;
-
-        // Visual Cleaning: Remove all technical content but keep the message
-        let cleanText = text
-            .replace(/\[ANGEHÄNGTE TRANSAKTION:[\s\S]*?\]/gi, '')
-            .replace(/QUERY:[\s\n]*\{[\s\S]*?\}/gi, '')
-            .replace(/ADD_TRANSACTION:[\s\n]*\{[\s\S]*?\}/gi, '')
-            .replace(/\{[^{}]*?"(date|category|name|wert|sender|empfaenger|company_id|user_id)"[^{}]*?\}/gi, '')
-            .replace(/ERGEBNIS DER RECHERCHE:[\s\S]*/gi, '')
-            .replace(/AKTION ERFOLGREICH:[\s\S]*/gi, '')
-            .replace(/\bQUERY\b/g, '')
-            .replace(/\bADD_TRANSACTION\b/g, '')
-            .trim();
+        const msg = document.createElement('div');
+        msg.className = `ai-message ai-message--${role==='user'?'user':'bot'}`;
         
-        cleanText = cleanText.replace(/^\s+|\s+$/g, '');
+        const content = role === 'assistant' && typeof marked !== 'undefined' ? marked.parse(cleanText) : cleanText;
         
-        // Don't show empty technical bubbles to user
-        if (!cleanText && !attachment && role === 'assistant') {
-            if (save) chatHistory.push({ role, content: text, attachment });
-            return true;
+        const avatar = role === 'user' ? 
+            `<div class="ai-message-avatar user-avatar">${userName.charAt(0).toUpperCase()}</div>` : 
+            '<div class="ai-message-avatar bot-avatar-small"><img src="../assets/icons/joule_logo.png" alt="C"></div>';
+
+        const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        msg.innerHTML = `
+            ${avatar}
+            <div class="ai-message-bubble-container">
+                <div class="ai-message-bubble">${content}</div>
+                <div class="ai-message-time">${timeStr}</div>
+            </div>
+        `;
+        messagesContainer.appendChild(msg);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        if (save) { 
+            const newMsg = { role, content: text, time: new Date().getTime() };
+            chatHistory.push(newMsg); 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory.slice(-20))); 
         }
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'ai-message ai-message--' + (role === 'assistant' ? 'bot' : 'user');
-        const avatar = document.createElement('div');
-        avatar.className = 'ai-message-avatar';
-        avatar.textContent = role === 'user' ? 'Du' : 'J';
-        const bubble = document.createElement('div');
-        bubble.className = 'ai-message-bubble';
-
-        if (attachment) {
-            const chip = document.createElement('div');
-            chip.style.cssText = 'display: inline-flex; align-items: center; background: #f3f0ff; border: 1px solid #6f42c1; border-radius: 8px; padding: 4px 8px; margin-bottom: 8px; font-size: 11px; color: #6f42c1; font-weight: bold; cursor: pointer;';
-            chip.innerHTML = `📎 ${attachment.name || attachment.kategorie} (${parseFloat(attachment.wert).toFixed(2)}€)`;
-            chip.onclick = () => {
-                closeChat();
-                document.dispatchEvent(new CustomEvent('forceFilter', { detail: { id: attachment.id, category: 'all' } }));
-            };
-            bubble.appendChild(chip);
-            if (cleanText) bubble.appendChild(document.createElement('br'));
-        }
-
-        const textSpan = document.createElement('span');
-        if (role === 'assistant' && typeof marked !== 'undefined') textSpan.innerHTML = marked.parse(cleanText);
-        else textSpan.textContent = cleanText;
-        bubble.appendChild(textSpan);
-
-        wrapper.appendChild(avatar); wrapper.appendChild(bubble);
-        messagesContainer.appendChild(wrapper); messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-        if (save) {
-            chatHistory.push({ role, content: text, attachment });
-            saveHistory();
-            if (role === 'assistant' && !isPanelOpen) toggleNotificationDot(true);
-        }
-        return true;
     }
 
-    if (chatHistory.length === 0) {
-        appendMessage("Hallo! Ich bin Joule. Wie kann ich dir heute helfen?", "assistant", null, true);
-    } else {
-        messagesContainer.innerHTML = "";
-        chatHistory.forEach(m => appendMessage(m.content, m.role, m.attachment, false));
-    }
-
-    function showTyping() {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'ai-message ai-message--bot ai-typing';
-        const avatar = document.createElement('div');
-        avatar.className = 'ai-message-avatar'; avatar.textContent = 'J';
-        const bubble = document.createElement('div'); bubble.className = 'ai-message-bubble';
-        for (let i = 0; i < 3; i++) {
-            const dot = document.createElement('span'); dot.className = 'ai-typing-dot';
-            bubble.appendChild(dot);
-        }
-        wrapper.appendChild(avatar); wrapper.appendChild(bubble);
-        messagesContainer.appendChild(wrapper); messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        return wrapper;
-    }
+    if (chatHistory.length === 0) appendMessage("Hallo! Ich bin Clair. Wie kann ich dir heute bei deinen Finanzen helfen?", "assistant", true);
+    else chatHistory.forEach(m => appendMessage(m.content, m.role, false, m.time));
 
     async function sendMessage() {
-        const text = input.value.trim();
-        if (!text && !activeAttachment) return;
-
-        let userMsgContent = text;
-        let currentAttachment = activeAttachment;
-
-        if (activeAttachment) {
-            const t = activeAttachment;
-            userMsgContent = `[ANGEHÄNGTE TRANSAKTION: ${t.name || t.kategorie}, Kat: ${t.kategorie}, Wert: ${t.wert}€, Datum: ${t.timestamp}] \n\n` + (text || "Analysiere diese Transaktion.");
-            activeAttachment = null;
-            attachmentArea.style.display = 'none';
-        }
-
-        appendMessage(text || "Analysiere Transaktion...", 'user', currentAttachment, true);
-        chatHistory[chatHistory.length - 1].content = userMsgContent;
-        saveHistory();
-
-        input.value = ''; input.style.height = 'auto'; sendBtn.disabled = true;
-        let typingEl = showTyping();
-
-        async function getAIResponse(history) {
-            const cleanedHistory = history.map(({ role, content }) => ({ role, content }));
-            const chatMessages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(cleanedHistory);
-            
-            try {
-                const response = await fetch(API_PROXY, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: chatMessages, company_id: companyId, user_id: userId })
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error?.message || errorData.error || "Server Error");
-                }
-
-                const result = await response.json();
-                return result.choices[0].message.content;
-            } catch (error) {
-                console.error("AI Error:", error);
-                throw error;
-            }
-        }
+        const text = input.value.trim(); if (!text) return;
+        input.value = ''; input.style.height = 'auto';
+        appendMessage(text, 'user');
+        
+        const typing = document.createElement('div');
+        typing.className = 'ai-message ai-message--bot ai-typing';
+        typing.innerHTML = `
+            <div class="ai-message-avatar bot-avatar-small"><img src="../assets/icons/joule_logo.png" alt="C"></div>
+            <div class="ai-message-bubble-container">
+                <div class="ai-message-bubble">
+                    <div class="ai-typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(typing);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         try {
-            let reply = await getAIResponse(chatHistory);
-            
-            for (let i = 0; i < 3; i++) {
-                const cleanReply = reply.replace(/```json\n|\n```/g, '');
-                const qM = cleanReply.match(/QUERY:\s*(\{[\s\S]*?\})/);
-                const aM = cleanReply.match(/ADD_TRANSACTION:\s*(\{[\s\S]*?\})/);
-                
-                if (qM) {
-                    try {
-                        const criteria = JSON.parse(qM[1]);
-                        const forceData = {};
-                        if (criteria.category) forceData.category = criteria.category;
-                        if (criteria.date) forceData.date = (criteria.date === 'all' ? '' : criteria.date);
-                        if (criteria.name) forceData.search = (criteria.name === 'all' ? '' : criteria.name);
-                        document.dispatchEvent(new CustomEvent('forceFilter', { detail: forceData }));
+            const fullMessages = [
+                { role: 'system', content: SYSTEM_PROMPT },
+                ...chatHistory.map(m => ({ role: m.role, content: m.content }))
+            ];
 
-                        let url = `/api/transactions?limit=20&company_id=${companyId}&user_id=${userId}`;
-                        if (criteria.category && criteria.category !== 'all') url += `&category=${encodeURIComponent(criteria.category)}`;
-                        if (criteria.name && criteria.name !== 'all') url += `&search=${encodeURIComponent(criteria.name)}`;
-                        if (criteria.date && criteria.date !== 'all') url += `&date=${encodeURIComponent(criteria.date)}`;
-                        
-                        const res = await fetch(url);
-                        const data = await res.json();
-                        const results = data.eintraege || [];
-                        const resultMsg = `ERGEBNIS DER RECHERCHE: ` + (results.length > 0 ? `Gefunden: ` + results.map(t => `${t.name} (${t.wert}€)`).join(', ') : `Keine Einträge gefunden.`);
-                        
-                        chatHistory.push({ role: 'assistant', content: reply });
-                        chatHistory.push({ role: 'system', content: resultMsg });
-                        reply = await getAIResponse(chatHistory);
-                    } catch (jsonErr) {
-                        console.error("[Joule] Malformed QUERY JSON:", qM[1], jsonErr);
-                        break;
-                    }
-                } 
-                else if (aM) {
-                    try {
-                        const payload = JSON.parse(aM[1]);
-                        payload.company_id = companyId;
-                        payload.user_id = userId;
-                        const response = await fetch('/api/transactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        if (response.ok) {
-                            document.dispatchEvent(new Event('dataUpdated'));
-                            chatHistory.push({ role: 'assistant', content: reply });
-                            chatHistory.push({ role: 'system', content: "AKTION ERFOLGREICH: Die Transaktion wurde gespeichert." });
-                            reply = await getAIResponse(chatHistory);
-                        } else break;
-                    } catch (jsonErr) {
-                        console.error("[Joule] Malformed ADD_TRANSACTION JSON:", aM[1], jsonErr);
-                        break;
-                    }
-                }
-                else break;
+            const res = await fetch(API_PROXY, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: fullMessages, company_id: companyId, user_id: userId })
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error?.message || errData.error || `Server error ${res.status}`);
             }
-            if (typingEl) typingEl.remove();
-            appendMessage(reply, 'assistant', null, true);
-        } catch (err) {
-            console.error(err);
-            if (typingEl) typingEl.remove();
-            appendMessage(err.message || 'Fehler bei der Kommunikation.', 'assistant', null, true);
-        } finally { sendBtn.disabled = false; }
+            const data = await res.json();
+            let reply = data.choices[0].message.content;
+            
+            // Clean markers from reply before showing to user
+            const cleanedReply = reply.replace(/(QUERY|ADD_TRANSACTION|FILTER_DASHBOARD|GET_SPENDING_ANALYSIS):\{.*?\}/g, '').trim();
+            
+            typing.remove();
+            appendMessage(cleanedReply, 'assistant');
+
+            const qM = reply.match(/QUERY:\s*(\{[\s\S]*?\})/);
+            if (qM) {
+                const c = JSON.parse(qM[1]);
+                document.dispatchEvent(new CustomEvent('forceFilter', { detail: { category: c.category, date: c.date, search: c.name } }));
+            }
+
+            const tM = reply.match(/ADD_TRANSACTION:\s*(\{[\s\S]*?\})/);
+            if (tM) {
+                console.log("[Chat] Transaction marker found:", tM[0]);
+                try {
+                    // Note: The backend already inserted the transaction for native tools.
+                    // We just trigger a UI refresh and show a toast here.
+                    console.log("[Chat] Transaction added by backend. Refreshing UI.");
+                    document.dispatchEvent(new Event('dataUpdated'));
+                    
+                    // Small visual confirmation
+                    const toast = document.createElement('div');
+                    toast.className = 'ai-chat-toast';
+                    toast.textContent = 'Transaktion hinzugefügt!';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                } catch (e) { console.error("[Chat] Error processing transaction marker", e); }
+            }
+        } catch (e) { 
+            console.error("[Chat API Error]", e);
+            typing.remove();
+            appendMessage(`Entschuldigung, ich habe gerade Verbindungsprobleme. (Details: ${e.message})`, "assistant", false);
+        }
     }
+
 })();

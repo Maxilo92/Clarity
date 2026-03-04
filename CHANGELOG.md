@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.6] - 2026-03-04
+### Fixed
+- **KI-Transaktionserfassung:** Synchronisierung der System-Prompts zwischen Frontend und Backend verbessert, um die Zuverlässigkeit der Transaktionserkennung zu erhöhen.
+- **Logging:** Erweitertes Logging im Browser zur besseren Fehlerdiagnose bei der automatischen Buchung von Transaktionen.
+- **Standardwerte:** Verbesserte Handhabung von Standardwerten (z.B. Sender-Name) beim Hinzufügen von Transaktionen über den Chat.
+
+## [0.4.5] - 2026-03-04
+### Fixed
+- **Echtzeit-Aktualisierung:** Die Transaktionsliste aktualisiert sich nun automatisch, wenn eine Transaktion über den Chat hinzugefügt wurde.
+- **Caching-Fix:** Die `ai-chat.js` wird nun mit einem aktuellen Versions-Suffix geladen, um Browser-Caching-Probleme nach Updates zu vermeiden.
+- **KI-Instruktionen:** Das System-Prompt für Clair wurde verfeinert, um sicherzustellen, dass Ausgaben korrekt mit negativem Vorzeichen verbucht werden.
+
+## [0.4.4] - 2026-03-04
+### Fixed
+- **KI-Transaktionsverarbeitung:** Fehler behoben, bei dem vom KI-Assistenten erkannte Transaktionen nicht in die Datenbank gespeichert wurden. Diese werden nun automatisch verbucht und die Benutzeroberfläche wird aktualisiert.
+- **Feedback:** Hinzufügen einer Bestätigungs-Toast-Meldung, wenn eine Transaktion erfolgreich über den Chat erstellt wurde.
+
+## [0.4.3] - 2026-03-04
+### Removed
+- **Quick Actions:** Die vordefinierten Schnell-Aktionen ("Zeig mir meine Ausgaben", etc.) wurden aus dem Chat-Interface entfernt, um ein minimalistischeres Design zu ermöglichen.
+
+## [0.4.2] - 2026-03-04
+### Changed
+- **Nutzer-Profilbild im Chat:** Das Profilbild des Nutzers im KI-Chat zeigt nun den Anfangsbuchstaben des tatsächlichen Namens an (vorher standardmäßig "U" für "User").
+- **Design-Update:** Nutzer-Avatare im Chat haben nun einen modernen lila Farbverlauf und eine kreisförmige Form.
+
+## [0.4.1] - 2026-03-04
+### Changed
+- **Clair Chat Refinement:** Vereinfachung des Designs basierend auf Nutzerfeedback.
+- **Visuals:** Entfernung des Hintergrund-Blurs für bessere Performance und Übersichtlichkeit.
+- **Header:** Status-Text auf "Online" gekürzt.
+- **Layout:** Fix für abgeschnittene Quick-Action-Buttons.
+- **Messages:** Korrekte Speicherung und Anzeige der Sendezeitpunkte für alle Nachrichten im Verlauf.
+
+## [0.4.0] - 2026-03-04
+### Added
+- **Clair Chat Redesign:** Vollständige optische und funktionale Überarbeitung des KI-Assistenten.
+- **Modernes Design:** Einführung eines Glassmorphism-Looks mit weicheren Gradienten, Schatten und modernen Animationen.
+- **Verbesserte UX:** Neuer schwebender Eingabebereich, Quick-Actions und ein dedizierter Online-Status-Indikator.
+- **Konsistentes Branding:** Umstellung des KI-Namens von "Joule" auf "Clair" im gesamten Projekt (Templates, Scripts, UI).
+- **Deep Integration:** Fix der "An Clair senden"-Funktion im Transaktions-Kontextmenü für nahtlose Analysen.
+
 ## [0.3.9] - 2026-03-04
 ### Fixed
 - **Joule API Kommunikation:** Behebung eines Fehlers, bei dem ungültige Datenfelder (wie Anhänge) an die KI-Schnittstelle gesendet wurden, was zum Abbruch des Chats führte.

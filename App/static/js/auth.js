@@ -51,7 +51,30 @@ const REMEMBERED_KEY = 'clarityRemembered';
 
     // 5. NO AUTO-LOGINS: We never redirect FROM login TO dashboard automatically.
     console.log("[Auth Guard] Done. User remains on current page.");
+
+    // 6. VERSION LOADING (Added for consistency)
+    loadAppInfo();
 })();
+
+async function loadAppInfo() {
+    try {
+        const resp = await fetch("/api/config");
+        const config = await resp.json();
+        const versionStr = "v" + (config.app_version || "0.0.0");
+
+        const versionEl = document.getElementById("app-version");
+        if (versionEl) {
+            versionEl.textContent = versionStr;
+            versionEl.style.display = "inline-block";
+        }
+        const footerVer = document.querySelector(".footer-version");
+        if (footerVer) {
+            footerVer.textContent = versionStr;
+        }
+    } catch (e) {
+        console.warn("[Auth] Could not load app version:", e);
+    }
+}
 
 function isAuthenticated() {
   return localStorage.getItem(AUTH_KEY) === 'true';

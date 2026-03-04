@@ -177,14 +177,14 @@
 
                     <!-- AI Assistant -->
                     <section class="settings-section">
-                        <h3>AI Assistant (Joule)</h3>
+                        <h3>AI Assistant (Clair)</h3>
                         <div class="settings-row">
                             <div class="settings-info">
                                 <label>Preferred Nickname</label>
-                                <p>How should Joule address you in chat?</p>
+                                <p>How should Clair address you in chat?</p>
                             </div>
                             <div class="settings-control">
-                                <input type="text" id="jouleNickname" class="settings-input" placeholder="e.g. Max" style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; width: 200px;">
+                                <input type="text" id="clairNickname" class="settings-input" placeholder="e.g. Max" style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; width: 200px;">
                             </div>
                         </div>
                     </section>
@@ -244,7 +244,7 @@
             fetch(`/api/config?user_id=${currentUser.id}&company_id=${currentUser.company_id}`)
                 .then(res => res.json())
                 .then(config => {
-                    const nicknameInput = document.getElementById('jouleNickname');
+                    const nicknameInput = document.getElementById('clairNickname');
                     if (config.nickname) {
                         nicknameInput.value = config.nickname;
                     } else if (currentUser.full_name) {
@@ -257,7 +257,7 @@
         // Save config
         document.getElementById('saveAllSettings').onclick = function() {
             if (!currentUser) return;
-            const nickname = document.getElementById('jouleNickname').value.trim();
+            const nickname = document.getElementById('clairNickname').value.trim();
             fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

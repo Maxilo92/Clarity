@@ -103,7 +103,39 @@
         </div>
 	</div>
 
+    <!-- Fixed version tag -->
+    <div style="position: fixed; top: 20px; right: 20px;">
+        <span id="app-version" class="version-tag" style="background: rgba(0,0,0,0.05); color: #64748b; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; border: 1px solid rgba(0,0,0,0.1); font-weight: 600; display: none;">...</span>
+    </div>
+
+    <!-- Copyright -->
+    <div style="position: fixed; bottom: 20px; width: 100%; text-align: center; pointer-events: none;">
+        <p style="color: #94a3b8; font-size: 0.8rem;">&copy; 2026 Clarity Financial Intelligence <span class="footer-version"></span></p>
+    </div>
+
 	<script>
+        // App Config & Version Management
+        async function loadAppInfo() {
+            try {
+                const resp = await fetch("/api/config");
+                const config = await resp.json();
+                const versionStr = "v" + (config.app_version || "0.0.0");
+
+                const versionEl = document.getElementById("app-version");
+                if (versionEl) {
+                    versionEl.textContent = versionStr;
+                    versionEl.style.display = "inline-block";
+                }
+                const footerVer = document.querySelector(".footer-version");
+                if (footerVer) {
+                    footerVer.textContent = versionStr;
+                }
+            } catch (e) {
+                console.warn("[Signup] Could not load app version:", e);
+            }
+        }
+        loadAppInfo();
+
         const urlParams = new URLSearchParams(window.location.search);
         let companyId = urlParams.get('company_id');
         let companyName = urlParams.get('company_name'); 

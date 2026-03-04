@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="../assets/pictures/favicon.png">
     <link rel="stylesheet" href="../static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="../static/js/auth.js"></script>
 
 <style>
@@ -183,15 +184,14 @@
                 <table class="transactions-table">
                     <thead>
                         <tr>
+                            <th>Name</th>
                             <th>Category</th>
-                            <th>Sender</th>
-                            <th>Recipient</th>
                             <th>Amount</th>
                             <th>Date</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td colspan="5" class="empty">No entries</td></tr>
+                        <tr><td colspan="4" class="empty">No entries</td></tr>
                     </tbody>
                 </table>
             </section>
@@ -207,7 +207,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="../static/js/dashboard.js"></script>
-    <script src="../static/js/ai-chat.js?v=0.3.9"></script>
+    <script src="../static/js/ai-chat.js?v=0.4.4"></script>
     <script src="../static/js/data-manager.js"></script>
     <script src="../static/js/dashboard-metrics.js"></script>
     
@@ -215,55 +215,129 @@
         <img src="../assets/icons/joule_logo.png" alt="AI Assistant">
     </button>
 
+    <!-- Modal for transaction details -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content detail-modal">
+            <div class="modal-header">
+                <span>Transaction Details</span>
+                <button type="button" class="modal-close" id="btnDetailsClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-header">
+                    <h3 id="detName">Transaction Name</h3>
+                    <p id="detDate">March 4, 2026</p>
+                </div>
+                
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>Amount</label>
+                        <div id="detAmount" class="detail-value amount-value">0.00€</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Category</label>
+                        <div id="detCategory" class="detail-value">Miscellaneous</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Sender</label>
+                        <div id="detSender" class="detail-value">-</div>
+                    </div>
+                    <div class="detail-item">
+                        <label>Recipient</label>
+                        <div id="detRecipient" class="detail-value">-</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>Description</label>
+                        <div id="detDescription" class="detail-value" style="font-size: 0.95rem; font-weight: 400; color: #4b5563;">-</div>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>Transaction ID</label>
+                        <div id="detId" class="detail-value" style="font-family: monospace; font-size: 0.8rem; color: #64748b;">-</div>
+                        <div class="barcode-container" style="margin-top: 10px; display: flex; justify-content: center; background: white; padding: 10px; border-radius: 8px;">
+                            <svg id="barcode"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" id="btnDetailsCloseBottom">Close</button>
+                <button type="button" class="btn btn-submit" id="btnDetailsEdit">Edit Transaction</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal for new transaction -->
     <div id="transactionModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">New Transaction</div>
+            <div class="modal-header">
+                <span>New Transaction</span>
+                <button type="button" class="modal-close" id="btnModalClose">&times;</button>
+            </div>
             <form id="transactionForm">
                 
-                <div class="form-group">
-                    <label>Type</label>
-                    <select id="tType">
-                        <option value="expense" selected>Expense</option>
-                        <option value="income">Income</option>
-                    </select>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label><i class="fas fa-exchange-alt"></i> Type</label>
+                            <div class="type-toggle">
+                                <input type="radio" name="type" id="typeExpense" value="expense" checked>
+                                <label for="typeExpense">Expense</label>
+                                <input type="radio" name="type" id="typeIncome" value="income">
+                                <label for="typeIncome">Income</label>
+                            </div>
+                            <input type="hidden" id="tType" value="expense">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label><i class="far fa-calendar-alt"></i> Date</label>
+                            <input type="date" id="tDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Name</label>
+                        <input type="text" id="tName" placeholder="e.g., Starbucks" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-align-left"></i> Description</label>
+                        <input type="text" id="tBeschreibung" placeholder="e.g., Latte Macchiato with extra shot">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label><i class="fas fa-th-large"></i> Category</label>
+                            <select id="tKategorie">
+                                <option value="Food">Food & Drinks</option>
+                                <option value="Housing">Housing</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Leisure">Leisure</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Health">Health</option>
+                                <option value="Income">Income / Salary</option>
+                                <option value="Miscellaneous" selected>Miscellaneous</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label><i class="fas fa-euro-sign"></i> Amount</label>
+                            <input type="number" id="tWert" step="0.01" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label><i class="fas fa-sign-out-alt"></i> Sender</label>
+                            <input type="text" id="tSender" placeholder="Me">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label><i class="fas fa-sign-in-alt"></i> Recipient</label>
+                            <input type="text" id="tEmpfaenger" placeholder="Store name">
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" id="tName" placeholder="e.g., Supermarket" required>
-                </div>
-                <div class="form-group">
-                    <label>Category</label>
-                    <select id="tKategorie">
-                        <option value="Income">Income</option>
-                        <option value="Housing">Housing</option>
-                        <option value="Transportation">Transportation</option>
-                        <option value="Food" selected>Food</option>
-                        <option value="Leisure">Leisure</option>
-                        <option value="Shopping">Shopping</option>
-                        <option value="Miscellaneous">Miscellaneous</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Sender</label>
-                    <input type="text" id="tSender" placeholder="Who sends the money?">
-                </div>
-                <div class="form-group">
-                    <label>Recipient</label>
-                    <input type="text" id="tEmpfaenger" placeholder="Who receives the money?">
-                </div>
-                <div class="form-group">
-                    <label>Amount (€)</label>
-                    <input type="number" id="tWert" step="0.01" placeholder="e.g., 12.50" required>
-                </div>
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" id="tDate" required>
-                </div>
+
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" id="btnDeleteTransaction" style="margin-right: auto; background: #fee2e2; color: #991b1b; border-color: #fecaca; display: none;">Delete</button>
                     <button type="button" class="btn btn-cancel" id="btnCancel">Cancel</button>
-                    <button type="submit" class="btn btn-submit">Add</button>
+                    <button type="submit" class="btn btn-submit" id="btnSubmit">Save Transaction</button>
                 </div>
             </form>
         </div>
@@ -274,7 +348,7 @@
     <!-- Context Menu -->
     <div id="contextMenu" class="context-menu">
         <ul class="context-menu-list">
-            <li id="cmAskJoule" style="color: #6f42c1; font-weight: bold; border-bottom: 1px solid #eee;">Ask Joule</li>
+            <li id="cmAskClair" style="color: #6f42c1; font-weight: bold; border-bottom: 1px solid #eee;">Ask Clair</li>
             <li id="cmEdit">Edit</li>
             <li id="cmDelete" class="delete-opt">Delete</li>
         </ul>
