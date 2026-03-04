@@ -16,6 +16,9 @@ const USER_KEY = 'clarityUser';
 
     const publicRoutes = ['/login', '/signup', '/register-company', '/logout', '/404'];
     const isPublic = publicRoutes.some(r => path === r || path.startsWith(r + '.html'));
+    
+    const isLoginPage = path.endsWith('login.html') || path === '/login';
+    const isSignupPage = path.includes('/signup') || path.includes('/register-company');
     const isIndex = path === '/' || path.endsWith('index.html');
 
     // IF LOGGED IN: Validate session with server to catch DB resets
@@ -24,15 +27,19 @@ const USER_KEY = 'clarityUser';
         if (userStr) {
             try {
                 const user = JSON.parse(userStr);
-                // Ping config API to see if user still exists
-                const res = await fetch(`/api/config?user_id=${user.id}&company_id=${user.company_id}`);
-                if (!res.ok) throw new Error("Session invalid");
+                // Ping config API to see if user still exists (skip if on logout)
+                if (path !== '/logout' && !path.startsWith('/logout')) {
+                    const res = await fetch(`/api/config?user_id=${user.id}&company_id=${user.company_id}`);
+                    if (!res.ok) throw new Error("Session invalid");
+                }
             } catch (e) {
                 console.warn("Session stale, logging out...");
                 localStorage.removeItem(AUTH_KEY);
                 localStorage.removeItem(USER_KEY);
-                window.location.href = '/login';
-                return;
+                if (!isPublic) {
+                    window.location.href = '/login';
+                    return;
+                }
             }
         }
     }
@@ -43,8 +50,9 @@ const USER_KEY = 'clarityUser';
         return;
     }
 
-    // Redirect authenticated users away from login/index to dashboard
-    if (isAuth && (isPublic || isIndex) && path !== '/logout' && !path.startsWith('/logout')) {
+    // Redirect authenticated users away from LOGIN or INDEX to dashboard
+    // BUT allow them to stay on SIGNUP/REGISTER-COMPANY (intent to create new account)
+    if (isAuth && (isLoginPage || isIndex)) {
         window.location.href = '/dashboard';
         return;
     }
