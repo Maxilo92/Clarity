@@ -142,37 +142,6 @@
                         </div>
                     </section>
 
-                    <!-- Display Settings -->
-                    <section class="settings-section">
-                        <h3>Display Settings <span class="demo-badge">Demo</span></h3>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <label>Dashboard Language</label>
-                                <p>Select your preferred language for the interface.</p>
-                            </div>
-                            <div class="settings-control">
-                                <select class="settings-input" disabled>
-                                    <option value="de">Deutsch</option>
-                                    <option value="en" selected>English</option>
-                                    <option value="fr">Français</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <label>Default Currency</label>
-                                <p>Set the primary currency for all financial reports.</p>
-                            </div>
-                            <div class="settings-control">
-                                <select class="settings-input" disabled>
-                                    <option value="eur" selected>Euro (€)</option>
-                                    <option value="usd">US Dollar ($)</option>
-                                    <option value="gbp">British Pound (£)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </section>
-
                     <!-- AI Assistant -->
                     <section class="settings-section">
                         <h3>AI Assistant (Joule)</h3>
@@ -199,33 +168,29 @@
                                 <button class="save-btn" disabled style="opacity: 0.6; cursor: not-allowed;">Change Password</button>
                             </div>
                         </div>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <label>Two-Factor Authentication</label>
-                                <p>Add an extra layer of security to your account.</p>
-                            </div>
-                            <div class="settings-control">
-                                <button class="save-btn" style="background-color: #2c3e50; opacity: 0.6; cursor: not-allowed;" disabled>Enable 2FA</button>
-                            </div>
-                        </div>
                     </section>
 
                     <!-- Account Deletion -->
-                    <section class="settings-section" style="border: 1px solid #fee2e2; background: #fffafb;">
-                        <h3 style="color: #991b1b;">Danger Zone</h3>
-                        <div class="settings-row">
-                            <div class="settings-info">
-                                <label style="color: #991b1b;">Delete Account</label>
-                                <p>Once you delete your account, there is no going back. Please be certain.</p>
+                    <section class="settings-section danger-zone-box" style="border: 2px solid #fee2e2; background: #fffafb; border-radius: 16px; padding: 25px; margin-top: 40px; position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #dc2626;"></div>
+                        <h3 style="color: #991b1b; margin-top: 0; display: flex; align-items: center; gap: 10px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            Danger Zone
+                        </h3>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">
+                            Once you delete your account, there is no going back. All your personal settings and data associations will be permanently removed from your organization's records.
+                        </p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 12px; border: 1px solid #fee2e2;">
+                            <div>
+                                <strong style="display: block; color: #1e293b; font-size: 0.95rem;">Permanently delete account</strong>
+                                <span style="font-size: 0.85em; color: #94a3b8;">This action is irreversible.</span>
                             </div>
-                            <div class="settings-control">
-                                <button class="save-btn" id="btnDeleteAccount" style="background-color: #dc2626;">Delete Account</button>
-                            </div>
+                            <button class="save-btn" id="btnDeleteAccount" style="background-color: #dc2626; padding: 10px 20px; font-weight: bold; border-radius: 8px;">Delete Account</button>
                         </div>
                     </section>
 
-                    <div style="margin-top: 20px;">
-                        <button class="save-btn" id="saveAllSettings" style="width: 100%; padding: 12px;">Save Changes</button>
+                    <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                        <button class="save-btn" id="saveAllSettings" style="width: 100%; padding: 14px; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(111, 66, 193, 0.2);">Save All Changes</button>
                     </div>
                 </div>
 			</div>
@@ -246,34 +211,40 @@
     <script>
         // Fill profile data from localStorage
         const userStr = localStorage.getItem('clarityUser');
+        let currentUser = null;
         if (userStr) {
             try {
-                const user = JSON.parse(userStr);
-                document.getElementById('profileName').textContent = user.full_name || 'N/A';
-                document.getElementById('profileEmail').textContent = user.email || 'N/A';
-                document.getElementById('profileOrg').textContent = user.company_name || 'Independent';
-                document.getElementById('profileRole').textContent = (user.role || 'user').toUpperCase();
+                currentUser = JSON.parse(userStr);
+                document.getElementById('profileName').textContent = currentUser.full_name || 'N/A';
+                document.getElementById('profileEmail').textContent = currentUser.email || 'N/A';
+                document.getElementById('profileOrg').textContent = currentUser.company_name || 'Independent';
+                document.getElementById('profileRole').textContent = (currentUser.role || 'user').toUpperCase();
             } catch(e) { console.error("Error parsing user data", e); }
         }
 
-        // Load existing AI config
-        fetch('/api/config')
-            .then(res => res.json())
-            .then(config => {
-                if (config.user && config.user.nickname) {
-                    document.getElementById('jouleNickname').value = config.user.nickname;
-                }
-            })
-            .catch(err => console.error("Error loading config:", err));
+        // Load existing AI config (User-Specific)
+        if (currentUser) {
+            fetch(`/api/config?user_id=${currentUser.id}&company_id=${currentUser.company_id}`)
+                .then(res => res.json())
+                .then(config => {
+                    if (config.nickname) {
+                        document.getElementById('jouleNickname').value = config.nickname;
+                    }
+                })
+                .catch(err => console.error("Error loading config:", err));
+        }
 
         // Save nickname on button click
         document.getElementById('saveAllSettings').onclick = function() {
+            if (!currentUser) return;
             const nickname = document.getElementById('jouleNickname').value.trim();
             fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user: { nickname: nickname }
+                    user_id: currentUser.id,
+                    company_id: currentUser.company_id,
+                    nickname: nickname
                 })
             })
             .then(res => res.json())
@@ -290,9 +261,7 @@
 
         // Delete Account Logic
         document.getElementById('btnDeleteAccount').onclick = async function() {
-            const userStr = localStorage.getItem('clarityUser');
-            if (!userStr) return;
-            const user = JSON.parse(userStr);
+            if (!currentUser) return;
 
             const confirmation = confirm("WARNING: Are you absolutely sure you want to delete your account? This action cannot be undone.");
             if (!confirmation) return;
@@ -301,7 +270,7 @@
             if (finalCheck !== 'DELETE') return;
 
             try {
-                const res = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
+                const res = await fetch(`/api/users/${currentUser.id}`, { method: 'DELETE' });
                 if (res.ok) {
                     alert("Account deleted successfully.");
                     window.location.href = '/logout';

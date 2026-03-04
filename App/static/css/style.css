@@ -1775,6 +1775,89 @@ input:checked + .slider:before {
     white-space: nowrap;
 }
 
+/* Legal Pages Styling */
+.legal-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.legal-hero {
+    background: linear-gradient(135deg, #0f4c81 0%, #0d6ea8 100%);
+    color: white;
+    padding: 60px 40px;
+    border-radius: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 25px rgba(15, 106, 182, 0.15);
+    text-align: center;
+}
+
+.legal-hero h1 {
+    color: white !important;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.legal-hero p {
+    opacity: 0.9;
+    font-size: 1.1rem;
+}
+
+.legal-card {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.02);
+    color: #334155;
+    line-height: 1.8;
+}
+
+.legal-card h2 {
+    color: #0f4c81;
+    font-size: 1.5rem;
+    margin: 30px 0 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.legal-card h2:first-child {
+    margin-top: 0;
+}
+
+.legal-card p {
+    margin-bottom: 20px;
+    font-size: 1.05rem;
+}
+
+.legal-card a {
+    color: #0d82d8;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.legal-card a:hover {
+    text-decoration: underline;
+}
+
+.legal-card ul {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+.legal-card li {
+    margin-bottom: 10px;
+}
+
+.legal-date {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    background: #f8fafc;
+    padding: 6px 12px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+}
+
 /* Final App Footer Branding */
 .main-content .app-footer {
     margin-top: 80px !important;
