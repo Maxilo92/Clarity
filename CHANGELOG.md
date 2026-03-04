@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.6] - 2026-03-04
+## [1.1.1] - 2026-03-04
+### Added
+- **Sicherung:** Aktueller Projektstand im Branch `v2` gesichert.
+- **Git-Optimierung:** `.gitignore` um temporäre Dateien (`.server.pid`, `server.log`, `.DS_Store`) erweitert.
+### Changed
+- **Versionierung:** Inkrementierung der Projektversion auf 1.1.1.
+
+## [1.0.0] - 2026-03-04
 ### Fixed
 - **KI-Transaktionserfassung:** Synchronisierung der System-Prompts zwischen Frontend und Backend verbessert, um die Zuverlässigkeit der Transaktionserkennung zu erhöhen.
 - **Logging:** Erweitertes Logging im Browser zur besseren Fehlerdiagnose bei der automatischen Buchung von Transaktionen.

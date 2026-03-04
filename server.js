@@ -33,18 +33,30 @@ app.use((req, res, next) => {
 app.use('/static',    express.static(path.join(APP_DIR, 'static')));
 app.use('/assets',    express.static(path.join(APP_DIR, 'assets')));
 
+const APP_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version;
+
+// Helper to serve HTML with injected version
+function sendTemplate(res, fileName) {
+    const filePath = path.join(APP_DIR, 'templates', fileName);
+    if (!fs.existsSync(filePath)) return res.status(404).send("Template not found");
+    let content = fs.readFileSync(filePath, 'utf8');
+    // Replace all occurrences of {{VERSION}} with the current version
+    content = content.replace(/{{VERSION}}/g, APP_VERSION);
+    res.send(content);
+}
+
 // --- Page Routes ---
-app.get('/', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'index.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'login.html')));
-app.get('/signup', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'signup.html')));
-app.get('/register-company', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'register-company.html')));
-app.get('/dashboard', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'dashboard.html')));
-app.get('/settings', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'settings.html')));
-app.get('/support', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'support.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'admin.html')));
-app.get('/logout', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'logout.html')));
-app.get('/tos', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'tos.html')));
-app.get('/impressum', (req, res) => res.sendFile(path.join(APP_DIR, 'templates', 'impressum.html')));
+app.get('/', (req, res) => sendTemplate(res, 'index.html'));
+app.get('/login', (req, res) => sendTemplate(res, 'login.html'));
+app.get('/signup', (req, res) => sendTemplate(res, 'signup.html'));
+app.get('/register-company', (req, res) => sendTemplate(res, 'register-company.html'));
+app.get('/dashboard', (req, res) => sendTemplate(res, 'dashboard.html'));
+app.get('/settings', (req, res) => sendTemplate(res, 'settings.html'));
+app.get('/support', (req, res) => sendTemplate(res, 'support.html'));
+app.get('/admin', (req, res) => sendTemplate(res, 'admin.html'));
+app.get('/logout', (req, res) => sendTemplate(res, 'logout.html'));
+app.get('/tos', (req, res) => sendTemplate(res, 'tos.html'));
+app.get('/impressum', (req, res) => sendTemplate(res, 'impressum.html'));
 
 app.get('/templates/:page.html', (req, res) => {
     const page = req.params.page;
@@ -53,7 +65,6 @@ app.get('/templates/:page.html', (req, res) => {
     res.redirect(301, target + queryString);
 });
 
-const APP_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version;
 let fetchFn = globalThis.fetch || require('node-fetch');
 
 async function getDatabaseSummary(companyId, userId) {
