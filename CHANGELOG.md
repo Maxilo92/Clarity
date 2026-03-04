@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.10] - 2026-03-04
+### Fixed
+- **Sidebar-Konsistenz:** Einheitliche Active-State-Logik über die URL statt klickbasierter Umschaltung, damit Menüeinträge nicht mehr verschwinden oder unerwartet wechseln.
+- **Admin-Navigation:** Doppelte Admin-Menüpunkte werden nun zuverlässig verhindert.
+- **Template-Struktur:** Fehlerhafte Sidebar-HTML-Struktur in `admin.html` und `dev-tools.html` korrigiert (`</ul>` ergänzt), wodurch Rendering-Probleme behoben wurden.
+
+## [1.1.9] - 2026-03-04
+### Added
+- **Financial Insights Overhaul:** A complete redesign of the Financial Insights page to provide a more comprehensive and intuitive user experience.
+- **Clair AI Integration:** The "Clair" AI assistant is now seamlessly integrated into the Insights page, allowing users to ask questions and gain context about their financial data directly.
+- **Modern Tile-Based Layout:** Replaced the old layout with a dynamic and responsive grid of tiles, each displaying key financial metrics, charts, or lists.
+- **Net Surplus Calculation:** A new key metric that calculates and displays the net surplus (income vs. expenses).
+- **Income vs. Expense Chart:** A new bar chart that visualizes total income against total expenses.
+- **Subscription Price Change Detection:** The subscription detection mechanism has been enhanced to identify and highlight price changes in recurring payments.
+### Changed
+- **UI/UX Improvements:** The entire Financial Insights page has been restyled for better readability, responsiveness, and visual appeal, with new animations and a consistent design language.
+- **Code Refactoring:** The JavaScript for the insights view (`insights-view.js`) and the AI chat (`ai-chat.js`) has been substantially refactored for better performance, maintainability, and to support the new features.
+
+## [1.1.8] - 2026-03-04
+### Changed
+- **Design-Anpassung der Financial Insights:** Das Design der Seite wurde vereinheitlicht, um mit dem Rest der Anwendung übereinzustimmen. Dies umfasst die Anpassung von Karten-Stilen (Padding, Eckenradius, Schatten), Typografie und Diagramm-Farbpaletten.
+- **Layout-Optimierung:** Das Layout wurde auf ein responsives Flexbox-Grid umgestellt, um die Darstellung auf verschiedenen Bildschirmgrößen zu verbessern.
+- **Metrik-Anzeige:** Die Anzeige der analysierten Transaktionen wurde für eine bessere Lesbarkeit korrigiert.
+
+## [1.1.7] - 2026-03-04
+### Fixed
+- **Datenumfang der Financial Insights:** Ein Fehler wurde behoben, bei dem die Analysen auf der Financial Insights-Seite fälschlicherweise nur die Transaktionen der letzten sechs Monate berücksichtigten. Die Auswertungen umfassen nun die gesamte Transaktionshistorie, um ein vollständiges Bild zu gewährleisten.
+
+## [1.1.6] - 2026-03-04
+### Changed
+- **Überarbeitung der Financial Insights-Seite:** Komplette Neugestaltung der Seite für eine bessere Datenvisualisierung und Verständlichkeit.
+- **Neues Layout:** Einführung eines modernen, kartenbasierten Designs mit Fokus auf Schlüsselmetriken und Diagrammen.
+- **Interaktive Diagramme:** Hinzufügen eines Balken- und Donut-Diagramms zur Visualisierung von Ausgaben nach Kategorie und deren Verteilung.
+- **Schlüsselmetriken:** Neue Sektion für wichtige Kennzahlen wie monatliche Abo-Kosten und Top-Ausgabenkategorie.
+- **Code-Refactoring:** Umfassende Überarbeitung von `insights-view.js` für bessere Modularität und Wartbarkeit, sowie Entfernung von Inline-Styles.
+
 ## [1.1.5] - 2026-03-04
 ### Added
 - **Neuer Sidebar-Tab:** "Financial Insights" hat nun einen dedizierten Bereich in der Navigation erhalten.

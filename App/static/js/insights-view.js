@@ -1,96 +1,305 @@
 (function() {
     let transactions = [];
+    let categorySpendingChart = null;
+    let incomeExpenseChart = null;
 
+    // Consistent color palette
+    const appColors = {
+        primary: '#6f42c1',
+        income: '#27ae60',
+        expense: '#e74c3c',
+        neutral: '#3498db',
+        accent1: '#f39c12',
+        accent2: '#9b59b6'
+    };
+
+    function generateColorPalette(count) {
+        const palette = [appColors.primary, appColors.income, appColors.neutral, appColors.accent1, appColors.accent2, appColors.expense];
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(palette[i % palette.length]);
+        }
+        return colors;
+    }
+
+    /**
+     * Get colors for categories using CategoryManager if available, fallback to palette.
+     */
+    async function getCategoryColors(categoryNames) {
+        if (window.CategoryManager) {
+            try {
+                const cats = await window.CategoryManager.fetchCategories();
+                const colorMap = {};
+                cats.forEach(c => colorMap[c.name.toLowerCase()] = c.color);
+                return categoryNames.map(name => colorMap[name.toLowerCase()] || appColors.neutral);
+            } catch {}
+        }
+        return generateColorPalette(categoryNames.length);
+    }
+
+    function setProfileName() {
+        try {
+            const user = JSON.parse(localStorage.getItem('clarityUser'));
+            if (user && user.full_name) {
+                document.querySelectorAll('.header-profile-link .name-text').forEach(el => {
+                    el.textContent = user.full_name;
+                });
+            }
+        } catch(e) {}
+    }
+    
     async function init() {
-        const userStr = localStorage.getItem('clarityUser');
-        if (!userStr) {
+        if (!localStorage.getItem('clarityUser')) {
             window.location.href = '/login';
             return;
         }
 
-        // Fetch Transactions
-        if (window.DataManager) {
-            transactions = await window.DataManager.fetchTransactions();
-            updateInsightsUI();
-        }
+        setProfileName();
 
-        // Handle version display
-        fetch('/api/config')
-            .then(res => res.json())
-            .then(config => {
-                const versionElements = document.querySelectorAll('.footer-version, #app-version');
-                versionElements.forEach(el => {
-                    el.textContent = config.version ? `v${config.version}` : '';
-                });
-            });
-    }
-
-    function updateInsightsUI() {
-        if (!window.ForecastEngine || !transactions.length) return;
-
-        // Subscriptions
-        const subs = window.ForecastEngine.detectSubscriptions(transactions);
-        const subList = document.getElementById('subscriptions-list');
-        if (subList) {
-            if (subs.length === 0) {
-                subList.innerHTML = '<p style="font-size: 0.875rem; color: #94a3b8; font-style: italic;">No recurring subscriptions detected yet.</p>';
-            } else {
-                subList.innerHTML = subs.map(sub => `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-size: 1rem; font-weight: 600; color: #1e293b;">${sub.name}</span>
-                            <span style="font-size: 0.8125rem; color: #64748b;">${sub.category} • ${sub.frequency.charAt(0).toUpperCase() + sub.frequency.slice(1)}</span>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="display: block; font-size: 1rem; font-weight: 700; color: ${sub.amount < 0 ? '#e74c3c' : '#27ae60'};">
-                                ${sub.amount < 0 ? '-' : ''}€${Math.abs(sub.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}
-                            </span>
-                        </div>
-                    </div>
-                `).join('');
+        // Use IndexManager for fast, persistent data access
+        if (window.IndexManager) {
+            try {
+                await window.IndexManager.ensureIndex();
+                transactions = await window.IndexManager.getAllTransactions();
+                console.log(`[Insights] Loaded ${transactions.length} transactions from index`);
+            } catch (err) {
+                console.warn('[Insights] IndexManager failed, falling back to DataManager:', err);
+                transactions = await window.DataManager.fetchTransactions();
+            }
+        } else {
+            try {
+                transactions = await window.DataManager.fetchTransactions();
+            } catch (error) {
+                console.error("Failed to fetch transactions:", error);
             }
         }
 
-        // Trends
-        const trends = window.ForecastEngine.calculateCategoryTrends(transactions);
-        const trendsContent = document.getElementById('trends-content');
-        if (trendsContent) {
-            const categories = Object.keys(trends);
-            if (categories.length === 0) {
-                trendsContent.innerHTML = '<p style="font-size: 0.875rem; color: #94a3b8; font-style: italic;">Not enough data to identify trends.</p>';
-            } else {
-                // Show top 5 trends
-                const sortedTrends = categories
-                    .map(cat => ({ name: cat, trend: (trends[cat] - 1) * 100 }))
-                    .sort((a, b) => Math.abs(b.trend) - Math.abs(a.trend))
-                    .slice(0, 5);
+        updateInsightsUI();
+    }
 
-                trendsContent.innerHTML = sortedTrends.map(t => {
-                    const isUp = t.trend > 0;
-                    const color = isUp ? '#e74c3c' : '#27ae60';
-                    const icon = isUp ? '↑' : '↓';
+    async function updateInsightsUI() {
+        let totalIncome, totalExpenses, netSurplus, expensesByCategory, sortedCategories;
+
+        // Try using pre-computed aggregations from IndexManager
+        if (window.IndexManager) {
+            try {
+                const agg = await window.IndexManager.getAggregations();
+                if (agg && agg.transactionCount > 0) {
+                    totalIncome = agg.totalIncome;
+                    totalExpenses = agg.totalExpenses;
+                    netSurplus = agg.netSurplus;
                     
-                    return `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
-                            <span style="font-size: 0.9375rem; color: #475569;">${t.name}</span>
-                            <div style="text-align: right;">
-                                <span style="font-size: 0.9375rem; font-weight: 700; color: ${color};">
-                                    ${icon} ${Math.abs(t.trend).toFixed(1)}%
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                }).join('') + `
-                    <div style="margin-top: 1rem; padding: 1rem; background: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7;">
-                        <p style="font-size: 0.8125rem; color: #92400e; margin: 0; line-height: 1.5;">
-                            <strong>AI Tip:</strong> Clair noticed ${sortedTrends.filter(t => t.trend > 2).length} categories with rising costs. Check if these are seasonal or permanent.
-                        </p>
-                    </div>
-                `;
+                    // Convert byCategory to sorted array
+                    expensesByCategory = {};
+                    for (const [cat, data] of Object.entries(agg.byCategory)) {
+                        if (data.expense > 0) expensesByCategory[cat] = data.expense;
+                    }
+                    sortedCategories = Object.entries(expensesByCategory).sort(([,a],[,b]) => b - a);
+                    
+                    console.log('[Insights] Using pre-computed aggregations');
+                }
+            } catch (err) {
+                console.warn('[Insights] Aggregation failed, computing manually:', err);
             }
         }
+
+        // Fallback: compute from raw transactions
+        if (totalIncome === undefined) {
+            totalIncome = transactions.filter(t => t.wert > 0).reduce((sum, t) => sum + t.wert, 0);
+            totalExpenses = transactions.filter(t => t.wert < 0).reduce((sum, t) => sum + t.wert, 0);
+            netSurplus = totalIncome + totalExpenses;
+
+            expensesByCategory = transactions
+                .filter(t => t.wert < 0)
+                .reduce((acc, t) => {
+                    const category = t.kategorie || 'Uncategorized';
+                    const amount = Math.abs(t.wert);
+                    acc[category] = (acc[category] || 0) + amount;
+                    return acc;
+                }, {});
+            sortedCategories = Object.entries(expensesByCategory).sort(([, a], [, b]) => b - a);
+        }
+
+        let subscriptions = [];
+        if (window.ForecastEngine && transactions.length > 0) {
+            try {
+                subscriptions = window.ForecastEngine.detectSubscriptions(transactions);
+            } catch (err) {
+                console.error("Error detecting subscriptions:", err);
+            }
+        }
+
+        updateMetrics(subscriptions, sortedCategories, transactions.length, netSurplus);
+        renderSubscriptions(subscriptions);
+        renderCategorySpendingChart(sortedCategories);
+        renderIncomeExpenseChart(totalIncome, Math.abs(totalExpenses));
     }
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
+    function updateMetrics(subscriptions, sortedCategories, transactionCount, netSurplus) {
+        // Net Surplus
+        const surplusCard = document.getElementById('metric-net-surplus');
+        surplusCard.querySelector('p').textContent = `€${netSurplus.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        surplusCard.querySelector('p').style.color = netSurplus >= 0 ? appColors.income : appColors.expense;
+        
+        // Total monthly subscription cost
+        const totalSubCost = subscriptions.reduce((sum, sub) => sum + (sub.monthlyAmount || Math.abs(sub.amount)), 0);
+        const metricSubCost = document.getElementById('metric-total-subscriptions');
+        metricSubCost.querySelector('p').textContent = `€${totalSubCost.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        metricSubCost.querySelector('.metric-description').textContent = `${subscriptions.length} subscriptions`;
+
+        // Top spending category
+        const topCategory = sortedCategories.length > 0 ? sortedCategories[0][0] : 'N/A';
+        const metricTopCategory = document.getElementById('metric-top-category');
+        metricTopCategory.querySelector('p').textContent = topCategory;
+
+        // Transactions analyzed
+        const metricTransactions = document.getElementById('metric-transactions-analyzed');
+        metricTransactions.querySelector('p').textContent = transactionCount;
+    }
+    
+    function renderSubscriptions(subscriptions) {
+        const subList = document.getElementById('subscriptions-list');
+        if (subscriptions.length === 0) {
+            subList.innerHTML = '<p class="loading-text">No recurring subscriptions detected.</p>';
+            return;
+        }
+
+        const freqLabels = {
+            weekly: 'Weekly', biweekly: 'Biweekly', monthly: 'Monthly',
+            quarterly: 'Quarterly', yearly: 'Yearly'
+        };
+        
+        subList.innerHTML = subscriptions.map(sub => {
+            let changeHtml = '';
+            if (sub.priceChange) {
+                const isIncrease = sub.priceChange > 0;
+                const changeClass = isIncrease ? 'change-increase' : 'change-decrease';
+                const changeIcon = isIncrease ? '▲' : '▼';
+                changeHtml = `<span class="change ${changeClass}">${changeIcon} €${Math.abs(sub.priceChange).toFixed(2)}</span>`;
+            }
+
+            const freqLabel = freqLabels[sub.frequency] || sub.frequency;
+            const monthlyStr = sub.monthlyAmount ? `~€${Math.abs(sub.monthlyAmount).toLocaleString('de-DE', {minimumFractionDigits: 2})}/mo` : '';
+
+            return `
+                <div class="subscription-item" data-name="${sub.name}" style="cursor:pointer">
+                    <div class="subscription-info">
+                        <span class="name">${sub.name}</span>
+                        <span class="details">${sub.category || 'Uncategorized'} • ${freqLabel}${sub.occurrences ? ` • ${sub.occurrences}x` : ''}</span>
+                    </div>
+                    <div class="subscription-amount">
+                        <span class="amount">€${Math.abs(sub.amount).toLocaleString('de-DE', {minimumFractionDigits: 2})}</span>
+                        ${changeHtml}
+                        ${monthlyStr && sub.frequency !== 'monthly' ? `<span class="monthly-equiv">${monthlyStr}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Navigate to dashboard filtered by subscription name on click
+        subList.querySelectorAll('.subscription-item').forEach(item => {
+            item.addEventListener('click', () => {
+                window.location.href = `/dashboard?search=${encodeURIComponent(item.dataset.name)}`;
+            });
+        });
+    }
+
+    async function renderCategorySpendingChart(sortedCategories) {
+        const ctx = document.getElementById('categorySpendingChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const labels = sortedCategories.map(item => item[0]);
+        const data = sortedCategories.map(item => item[1]);
+        const colors = await getCategoryColors(labels);
+
+        if (categorySpendingChart) categorySpendingChart.destroy();
+
+        categorySpendingChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Spending',
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (c) => `${c.label}: €${c.raw.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderIncomeExpenseChart(income, expenses) {
+        const ctx = document.getElementById('incomeExpenseChart')?.getContext('2d');
+        if (!ctx) return;
+
+        if (incomeExpenseChart) incomeExpenseChart.destroy();
+        
+        incomeExpenseChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Finances'],
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: [income],
+                        backgroundColor: appColors.income,
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Expenses',
+                        data: [expenses],
+                        backgroundColor: appColors.expense,
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        stacked: true,
+                        display: false,
+                    },
+                    y: {
+                        stacked: true,
+                        display: false
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (c) => `${c.dataset.label}: €${c.raw.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
 })();
+

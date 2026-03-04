@@ -213,11 +213,25 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../static/js/category-manager.js"></script>
+    <script src="../static/js/index-manager.js"></script>
     <script src="../static/js/dashboard.js"></script>
+    <script src="../static/js/sidebar-admin.js"></script>
     <script src="../static/js/ai-chat.js?v={{VERSION}}"></script>
     <script src="../static/js/data-manager.js"></script>
     <script src="/static/js/forecast-engine.js"></script>
     <script src="/static/js/dashboard-metrics.js"></script>
+    <script>
+        // Populate category dropdown from API + ensure index is up-to-date
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.CategoryManager) {
+                window.CategoryManager.populateSelect('#tKategorie', 'Miscellaneous');
+            }
+            if (window.IndexManager) {
+                window.IndexManager.ensureIndex().catch(err => console.warn('[Dashboard] Index check:', err));
+            }
+        });
+    </script>
     
     <button class="diamond-btn" title="Open AI Assistant" aria-label="Open AI Chat">
         <img src="../assets/icons/joule_logo.png" alt="AI Assistant">
@@ -314,14 +328,7 @@
                         <div class="form-group flex-1">
                             <label><i class="fas fa-th-large"></i> Category</label>
                             <select id="tKategorie">
-                                <option value="Food">Food & Drinks</option>
-                                <option value="Housing">Housing</option>
-                                <option value="Transportation">Transportation</option>
-                                <option value="Leisure">Leisure</option>
-                                <option value="Shopping">Shopping</option>
-                                <option value="Health">Health</option>
-                                <option value="Income">Income / Salary</option>
-                                <option value="Miscellaneous" selected>Miscellaneous</option>
+                                <option value="Miscellaneous" selected>Loading...</option>
                             </select>
                         </div>
                         <div class="form-group flex-1">

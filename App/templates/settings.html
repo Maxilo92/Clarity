@@ -195,6 +195,29 @@
                         </div>
                     </section>
 
+                    <!-- Custom Categories -->
+                    <section class="settings-section" id="categoriesSection">
+                        <h3>Transaction Categories</h3>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Manage the categories available for your transactions. Default categories cannot be deleted.</p>
+                        
+                        <div id="categoriesList" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                            <p style="color: #94a3b8;">Loading categories...</p>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 180px;">
+                                <label style="font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">New Category</label>
+                                <input type="text" id="newCategoryName" placeholder="e.g. Education" maxlength="30" style="border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px; width: 100%; font-size: 0.95rem;">
+                            </div>
+                            <div style="min-width: 60px;">
+                                <label style="font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Color</label>
+                                <input type="color" id="newCategoryColor" value="#6f42c1" style="border: 1px solid #e2e8f0; padding: 4px; border-radius: 8px; width: 48px; height: 42px; cursor: pointer;">
+                            </div>
+                            <button id="btnAddCategory" style="padding: 10px 20px; background: #6f42c1; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; height: 42px; white-space: nowrap; transition: background 0.2s;">+ Add</button>
+                        </div>
+                        <p id="categoryError" style="color: #dc2626; font-size: 0.85rem; margin-top: 8px; display: none;"></p>
+                    </section>
+
                     <!-- Danger Zone -->
                     <section class="danger-zone-card">
                         <div class="danger-header">
@@ -232,6 +255,8 @@
 	<script src="../static/js/dashboard.js"></script>
     <script src="../static/js/ai-chat.js"></script>
     <script src="../static/js/settings-search.js"></script>
+    <script src="../static/js/category-manager.js"></script>
+    <script src="../static/js/sidebar-admin.js"></script>
     <script>
         const userStr = localStorage.getItem('clarityUser');
         let currentUser = null;
@@ -299,6 +324,74 @@
                 }
             } catch (e) { alert("Server error."); }
         };
+
+        // --- Category Management ---
+        async function renderCategories() {
+            const container = document.getElementById('categoriesList');
+            if (!container || !window.CategoryManager) return;
+
+            try {
+                const categories = await window.CategoryManager.fetchCategories(true);
+                if (!categories || categories.length === 0) {
+                    container.innerHTML = '<p style="color: #94a3b8;">No categories found.</p>';
+                    return;
+                }
+                container.innerHTML = categories.map(cat => {
+                    const isDefault = cat.is_default ? true : false;
+                    return `
+                        <div class="category-chip" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 10px; border: 1.5px solid ${cat.color}20; background: ${cat.color}10; font-size: 0.9rem; font-weight: 500; color: #1e293b; transition: all 0.2s;">
+                            <span style="width: 12px; height: 12px; border-radius: 50%; background: ${cat.color}; display: inline-block; flex-shrink: 0;"></span>
+                            <span>${cat.name}</span>
+                            ${isDefault ? '<span style="font-size: 0.7em; color: #94a3b8; font-weight: 400;">default</span>' : `<button onclick="deleteCat(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 1.1em; padding: 0 0 0 4px; line-height: 1;" title="Delete">&times;</button>`}
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('[Settings] Failed to load categories:', err);
+                container.innerHTML = '<p style="color: #dc2626;">Failed to load categories.</p>';
+            }
+        }
+
+        window.deleteCat = async function(id, name) {
+            if (!confirm(`Delete category "${name}"? Existing transactions with this category will keep their label.`)) return;
+            try {
+                await window.CategoryManager.deleteCategory(id);
+                renderCategories();
+            } catch (err) {
+                const errEl = document.getElementById('categoryError');
+                errEl.textContent = err.message;
+                errEl.style.display = 'block';
+                setTimeout(() => errEl.style.display = 'none', 3000);
+            }
+        };
+
+        document.getElementById('btnAddCategory').onclick = async function() {
+            const nameInput = document.getElementById('newCategoryName');
+            const colorInput = document.getElementById('newCategoryColor');
+            const errEl = document.getElementById('categoryError');
+            const name = nameInput.value.trim();
+            if (!name) { nameInput.focus(); return; }
+
+            try {
+                await window.CategoryManager.addCategory(name, colorInput.value);
+                nameInput.value = '';
+                colorInput.value = '#6f42c1';
+                errEl.style.display = 'none';
+                renderCategories();
+            } catch (err) {
+                errEl.textContent = err.message;
+                errEl.style.display = 'block';
+                setTimeout(() => errEl.style.display = 'none', 4000);
+            }
+        };
+
+        // Also allow adding via Enter key
+        document.getElementById('newCategoryName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnAddCategory').click(); }
+        });
+
+        // Load categories on page load
+        renderCategories();
     </script>
     <button class="diamond-btn" title="Open AI Assistant" aria-label="Open AI Chat">
         <img src="../assets/icons/joule_logo.png" alt="AI Assistant">

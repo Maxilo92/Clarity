@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clarity - Developer Tools</title>
+    <link rel="icon" type="image/png" href="../assets/pictures/favicon.png">
+    <link rel="stylesheet" href="../static/css/style.css">
+    <script src="../static/js/auth.js"></script>
+    <script>
+        (function() {
+            const userStr = localStorage.getItem('clarityUser');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                if (user.role !== 'admin') window.location.href = '/dashboard';
+            }
+        })();
+    </script>
+    <style>
+        .devtools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 28px;
+        }
+        .devtool-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.25s ease;
+        }
+        .devtool-card:hover {
+            box-shadow: 0 8px 25px rgba(111, 66, 193, 0.08);
+            border-color: #d4c5f0;
+        }
+        .devtool-card h3 {
+            margin: 0 0 8px;
+            font-size: 1.1rem;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .devtool-card h3 .card-icon {
+            width: 32px; height: 32px;
+            background: #f3f0ff;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: #6f42c1;
+            flex-shrink: 0;
+        }
+        .devtool-card p {
+            color: #64748b;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            margin: 0 0 18px;
+        }
+        .devtool-card .card-footer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .devtool-btn {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .devtool-btn-primary {
+            background: #6f42c1;
+            color: white;
+        }
+        .devtool-btn-primary:hover {
+            background: #5a32a3;
+            box-shadow: 0 4px 12px rgba(111, 66, 193, 0.25);
+        }
+        .devtool-btn-primary:disabled {
+            background: #c4b5d8;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .devtool-status {
+            font-size: 0.82rem;
+            color: #64748b;
+        }
+        .devtool-status.status-ok { color: #059669; }
+        .devtool-status.status-err { color: #dc2626; }
+        .devtool-status.status-busy { color: #6f42c1; }
+
+        .index-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+            margin-bottom: 18px;
+            font-size: 0.85rem;
+        }
+        .index-info-grid dt {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .index-info-grid dd {
+            color: #1e293b;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .mini-progress-track {
+            width: 100%;
+            height: 4px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+        .mini-progress-track.active { display: block; }
+        .mini-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6f42c1, #9b59b6);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body data-require-auth="true">
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="../assets/pictures/clarity_logo.png" alt="Clarity" class="sidebar-logo">
+            </div>
+            <nav>
+                <ul class="menu">
+                    <li class="menu-item">
+                        <a href="/">
+                            <span class="menu-icon"></span>
+                            <span>Home</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/dashboard">
+                            <span class="menu-icon"></span>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/insights">
+                            <span class="menu-icon"></span>
+                            <span>Financial Insights</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/settings">
+                            <span class="menu-icon"></span>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="/support">
+                            <span class="menu-icon"></span>
+                            <span>Support</span>
+                        </a>
+                    </li>
+
+                    <li style="border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 14px 6px; list-style: none;"></li>
+                    <li style="padding: 2px 18px 4px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.35); font-weight: 700; list-style: none;">Admin</li>
+                    
+                    <li class="menu-item">
+                        <a href="/admin">
+                            <span class="menu-icon"></span>
+                            <span>Admin Panel</span>
+                        </a>
+                    </li>
+                    <li class="menu-item active">
+                        <a href="/dev-tools">
+                            <span class="menu-icon"></span>
+                            <span>Developer Tools</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/logout" class="logout-btn">Log Out</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="header" style="display: flex; align-items: center;">
+                <div class="header-left" style="flex: 1;">
+                    <h1>Developer Tools</h1>
+                    <span id="app-version" class="version-tag">...</span>
+                </div>
+                <div class="header-right" style="flex: 1; display: flex; justify-content: flex-end;">
+                    <a href="/settings" class="header-profile-link" style="text-decoration: none; color: #1e293b; font-weight: 600; padding: 8px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px; transition: background 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f42c1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span class="name-text">Profile</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="content-section">
+                <div class="devtools-grid">
+
+                    <!-- Reindex Card -->
+                    <div class="devtool-card" id="reindexCard">
+                        <h3>
+                            <span class="card-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                            </span>
+                            Transaction Index
+                        </h3>
+                        <p>Rebuild the local IndexedDB transaction index. This re-fetches all transactions from the server and recomputes aggregations.</p>
+
+                        <dl class="index-info-grid" id="indexInfoGrid">
+                            <dt>Indexed</dt>
+                            <dd id="indexCount">—</dd>
+                            <dt>Server</dt>
+                            <dd id="serverCount">—</dd>
+                            <dt>Last built</dt>
+                            <dd id="indexBuiltAt">—</dd>
+                            <dt>Status</dt>
+                            <dd id="indexSyncStatus">Checking…</dd>
+                        </dl>
+
+                        <div class="card-footer">
+                            <button class="devtool-btn devtool-btn-primary" id="btnReindex">Reindex Now</button>
+                            <span class="devtool-status" id="reindexStatus"></span>
+                        </div>
+                        <div class="mini-progress-track" id="reindexProgress">
+                            <div class="mini-progress-bar" id="reindexProgressBar"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <footer class="app-footer">
+                <p>&copy; 2026 Clarity - An Intelligent Financial Tracker <span class="footer-version"></span></p>
+                <div class="footer-links">
+                    <a href="/tos">Terms of Service</a>
+                    <a href="/impressum">Impressum</a>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script src="../static/js/index-manager.js"></script>
+    <script>
+        // Profile name display
+        try {
+            const user = JSON.parse(localStorage.getItem('clarityUser'));
+            if (user && user.full_name) {
+                document.querySelectorAll('.name-text').forEach(el => el.textContent = user.full_name);
+            }
+        } catch(e) {}
+
+        // --- Index Info ---
+        async function loadIndexInfo() {
+            const countEl     = document.getElementById('indexCount');
+            const serverEl    = document.getElementById('serverCount');
+            const builtEl     = document.getElementById('indexBuiltAt');
+            const syncEl      = document.getElementById('indexSyncStatus');
+
+            try {
+                // Local info
+                if (window.IndexManager) {
+                    const info = await window.IndexManager.getIndexInfo();
+                    if (info) {
+                        countEl.textContent = info.count.toLocaleString() + ' transactions';
+                        builtEl.textContent = new Date(info.builtAt).toLocaleString('de-DE');
+                    } else {
+                        countEl.textContent = 'No index';
+                        builtEl.textContent = '—';
+                    }
+
+                    // Server info
+                    const user = JSON.parse(localStorage.getItem('clarityUser'));
+                    if (user) {
+                        const res = await fetch(`/api/transactions/index-status?company_id=${user.company_id}&user_id=${user.id}`);
+                        const status = await res.json();
+                        serverEl.textContent = (status.count || 0).toLocaleString() + ' transactions';
+
+                        // Sync check
+                        if (!info) {
+                            syncEl.textContent = 'Not indexed';
+                            syncEl.className = 'devtool-status status-err';
+                        } else if (info.count === status.count && info.latest_id === status.latest_id) {
+                            syncEl.textContent = 'In sync ✓';
+                            syncEl.className = 'devtool-status status-ok';
+                        } else {
+                            syncEl.textContent = `Out of sync (local: ${info.count}, server: ${status.count})`;
+                            syncEl.className = 'devtool-status status-err';
+                        }
+                    }
+                } else {
+                    countEl.textContent = 'IndexManager not loaded';
+                    syncEl.textContent = 'Unavailable';
+                    syncEl.className = 'devtool-status status-err';
+                }
+            } catch (err) {
+                console.error('[DevTools] Error loading index info:', err);
+            }
+        }
+
+        // --- Reindex ---
+        document.getElementById('btnReindex').addEventListener('click', async function() {
+            const btn = this;
+            const statusEl = document.getElementById('reindexStatus');
+            const progressTrack = document.getElementById('reindexProgress');
+            const progressBar = document.getElementById('reindexProgressBar');
+
+            if (!window.IndexManager) {
+                statusEl.textContent = 'IndexManager not available';
+                statusEl.className = 'devtool-status status-err';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Reindexing…';
+            statusEl.textContent = '';
+            statusEl.className = 'devtool-status status-busy';
+            progressTrack.classList.add('active');
+            progressBar.style.width = '0%';
+
+            // Monitor the global progress bar updates via MutationObserver
+            const globalBar = document.getElementById('index-progress-bar');
+            let observer = null;
+            if (globalBar) {
+                observer = new MutationObserver(() => {
+                    progressBar.style.width = globalBar.style.width;
+                });
+                observer.observe(globalBar, { attributes: true, attributeFilter: ['style'] });
+            } else {
+                // Simulate progress
+                let pct = 0;
+                var interval = setInterval(() => {
+                    pct = Math.min(90, pct + 5);
+                    progressBar.style.width = pct + '%';
+                }, 300);
+            }
+
+            const startTime = Date.now();
+            try {
+                await window.IndexManager.forceRebuild();
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                statusEl.textContent = `Done in ${elapsed}s`;
+                statusEl.className = 'devtool-status status-ok';
+                progressBar.style.width = '100%';
+            } catch (err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.className = 'devtool-status status-err';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Reindex Now';
+                if (observer) observer.disconnect();
+                if (typeof interval !== 'undefined') clearInterval(interval);
+                setTimeout(() => {
+                    progressTrack.classList.remove('active');
+                    loadIndexInfo();
+                }, 1000);
+            }
+        });
+
+        // Load info on page ready
+        document.addEventListener('DOMContentLoaded', loadIndexInfo);
+    </script>
+
+    <button class="diamond-btn" title="Open AI Assistant" aria-label="Open AI Chat">
+        <img src="../assets/icons/joule_logo.png" alt="AI Assistant">
+    </button>
+</body>
+</html>

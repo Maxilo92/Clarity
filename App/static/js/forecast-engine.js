@@ -1,50 +1,116 @@
 window.ForecastEngine = (function() {
     /**
+     * Normalizes a transaction name for grouping.
+     * Strips common suffixes, extra whitespace, and lowercases.
+     */
+    function normalizeName(name) {
+        return name
+            .toLowerCase()
+            .replace(/\s*(gmbh|ag|inc|ltd|se|co\.?\s*kg|e\.?\s*v\.?|ug)\s*/gi, '')
+            .replace(/[*#+\-_]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    /**
      * Detects recurring transactions (subscriptions) in the given transaction list.
-     * Supports Monthly, Quarterly, and Yearly.
+     * Uses fuzzy name matching, day-based interval analysis, and amount clustering.
      */
     function detectSubscriptions(transactions) {
+        // 1. Group by normalized name
         const groups = {};
         transactions.forEach(t => {
-            const name = t.name.toLowerCase().trim();
-            if (!groups[name]) groups[name] = [];
-            groups[name].push(t);
+            const key = normalizeName(t.name);
+            if (!key) return;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
         });
 
         const subscriptions = [];
 
-        for (const name in groups) {
-            const group = groups[name].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        for (const key in groups) {
+            const group = groups[key].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             if (group.length < 2) continue;
 
-            const intervals = [];
-            for (let i = 1; i < group.length; i++) {
-                const d1 = new Date(group[i-1].timestamp);
-                const d2 = new Date(group[i].timestamp);
-                const diffMonths = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-                intervals.push(diffMonths);
-            }
-
-            // Determine frequency
-            const freqCounts = { 1: 0, 3: 0, 12: 0 };
-            intervals.forEach(inv => { if (freqCounts[inv] !== undefined) freqCounts[inv]++; });
+            // 2. Cluster by similar amounts (within 25% of median)
+            const amounts = group.map(t => Math.abs(parseFloat(t.wert)));
+            const medianAmount = amounts.slice().sort((a, b) => a - b)[Math.floor(amounts.length / 2)];
+            const tolerance = medianAmount * 0.25;
+            const filtered = group.filter(t => Math.abs(Math.abs(parseFloat(t.wert)) - medianAmount) <= tolerance);
             
-            let frequency = 'none';
-            if ((freqCounts[1] / intervals.length) > 0.6) frequency = 'monthly';
-            else if ((freqCounts[3] / intervals.length) > 0.6) frequency = 'quarterly';
-            else if ((freqCounts[12] / intervals.length) > 0.6) frequency = 'yearly';
+            if (filtered.length < 2) continue;
 
-            if (frequency !== 'none') {
-                const avgAmount = group.reduce((sum, t) => sum + parseFloat(t.wert), 0) / group.length;
-                subscriptions.push({
-                    name: group[0].name,
-                    amount: avgAmount,
-                    lastDate: new Date(group[group.length - 1].timestamp),
-                    category: group[0].kategorie,
-                    frequency: frequency
-                });
+            // 3. Calculate day-based intervals (more precise than month-based)
+            const intervals = [];
+            for (let i = 1; i < filtered.length; i++) {
+                const d1 = new Date(filtered[i - 1].timestamp);
+                const d2 = new Date(filtered[i].timestamp);
+                const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+                intervals.push(diffDays);
             }
+
+            if (intervals.length === 0) continue;
+
+            // 4. Determine frequency with tolerance ranges (days)
+            const freqRanges = [
+                { name: 'weekly',    min: 5,   max: 10,  days: 7 },
+                { name: 'biweekly',  min: 11,  max: 18,  days: 14 },
+                { name: 'monthly',   min: 25,  max: 35,  days: 30 },
+                { name: 'quarterly', min: 80,  max: 100, days: 91 },
+                { name: 'yearly',    min: 350, max: 380, days: 365 }
+            ];
+
+            let bestFreq = null;
+            let bestScore = 0;
+
+            for (const freq of freqRanges) {
+                const matchCount = intervals.filter(d => d >= freq.min && d <= freq.max).length;
+                const score = matchCount / intervals.length;
+                if (score > bestScore && score >= 0.5) {
+                    bestScore = score;
+                    bestFreq = freq;
+                }
+            }
+
+            if (!bestFreq) continue;
+
+            // 5. Calculate current and previous amount for price change detection
+            const recentAmounts = filtered.slice(-3).map(t => Math.abs(parseFloat(t.wert)));
+            const olderAmounts = filtered.slice(0, Math.max(1, filtered.length - 3)).map(t => Math.abs(parseFloat(t.wert)));
+            const currentAvg = recentAmounts.reduce((s, v) => s + v, 0) / recentAmounts.length;
+            const olderAvg = olderAmounts.reduce((s, v) => s + v, 0) / olderAmounts.length;
+            
+            let priceChange = null;
+            const changeDiff = currentAvg - olderAvg;
+            if (Math.abs(changeDiff) > olderAvg * 0.05 && filtered.length >= 4) {
+                priceChange = changeDiff;
+            }
+
+            // 6. Calculate monthly cost equivalent
+            let monthlyAmount = currentAvg;
+            if (bestFreq.name === 'weekly') monthlyAmount = currentAvg * 4.33;
+            else if (bestFreq.name === 'biweekly') monthlyAmount = currentAvg * 2.17;
+            else if (bestFreq.name === 'quarterly') monthlyAmount = currentAvg / 3;
+            else if (bestFreq.name === 'yearly') monthlyAmount = currentAvg / 12;
+
+            // Use most negative (expense) amount for display
+            const latestAmount = parseFloat(filtered[filtered.length - 1].wert);
+
+            subscriptions.push({
+                name: filtered[0].name,
+                amount: latestAmount,
+                monthlyAmount: monthlyAmount,
+                lastDate: new Date(filtered[filtered.length - 1].timestamp),
+                category: filtered[filtered.length - 1].kategorie,
+                frequency: bestFreq.name,
+                confidence: bestScore,
+                occurrences: filtered.length,
+                priceChange: priceChange
+            });
         }
+
+        // Sort by monthly cost (highest first)
+        subscriptions.sort((a, b) => Math.abs(b.monthlyAmount) - Math.abs(a.monthlyAmount));
         return subscriptions;
     }
 

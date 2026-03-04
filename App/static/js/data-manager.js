@@ -1,7 +1,43 @@
 window.DataManager = (function() {
     let transactions = [];
 
-    async function fetchTransactions() {
+    const CACHE_KEY = 'clarityTransactionsCache';
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+    function getCachedData() {
+        try {
+            const raw = sessionStorage.getItem(CACHE_KEY);
+            if (!raw) return null;
+            const cache = JSON.parse(raw);
+            if (Date.now() - cache.timestamp > CACHE_TTL) {
+                sessionStorage.removeItem(CACHE_KEY);
+                return null;
+            }
+            return cache.data;
+        } catch(e) { return null; }
+    }
+
+    function setCachedData(data) {
+        try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+        } catch(e) {}
+    }
+
+    function invalidateCache() {
+        sessionStorage.removeItem(CACHE_KEY);
+    }
+
+    async function fetchTransactions(forceRefresh) {
+        // Return cached data if still valid
+        if (!forceRefresh) {
+            const cached = getCachedData();
+            if (cached && cached.length > 0) {
+                transactions = cached;
+                console.log("DataManager: " + transactions.length + " Transaktionen aus Cache geladen.");
+                return transactions;
+            }
+        }
+
         try {
             const userStr = localStorage.getItem('clarityUser');
             let userIdQuery = '';
@@ -15,7 +51,8 @@ window.DataManager = (function() {
             const res = await fetch(`/api/transactions?limit=10000${userIdQuery}${companyIdQuery}`);
             const data = await res.json();
             transactions = data.eintraege || [];
-            console.log("DataManager: " + transactions.length + " Transaktionen geladen.");
+            setCachedData(transactions);
+            console.log("DataManager: " + transactions.length + " Transaktionen von API geladen.");
             return transactions;
         } catch (err) {
             console.error("Fehler beim Laden der Transaktionen:", err);
@@ -131,6 +168,7 @@ window.DataManager = (function() {
 
     return {
         fetchTransactions,
+        invalidateCache,
         getAggregatedData,
         searchTransactions,
         getAllTransactions

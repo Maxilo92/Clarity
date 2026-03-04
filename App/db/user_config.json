@@ -13,7 +13,7 @@
   "app_settings": {
     "theme": "Clarity Modern",
     "notifications_enabled": true,
-    "ai_assistant_name": "Joule",
+    "ai_assistant_name": "Clair",
     "dashboard_layout": "Default",
     "data_privacy_level": "High"
   },

@@ -21,6 +21,25 @@ function getCompanyDb(companyId) {
         cDb.run(`CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY, name TEXT, kategorie TEXT, wert REAL, timestamp TEXT, sender TEXT, empfaenger TEXT, user_id INTEGER)`);
         cDb.run(`CREATE TABLE IF NOT EXISTS invites (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, used BOOLEAN DEFAULT 0, expires_at TEXT)`);
         cDb.run(`CREATE TABLE IF NOT EXISTS user_settings (user_id INTEGER PRIMARY KEY, nickname TEXT, theme TEXT DEFAULT 'light', notifications_enabled BOOLEAN DEFAULT 1, FOREIGN KEY (user_id) REFERENCES users(id))`);
+        cDb.run(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, color TEXT DEFAULT '#6f42c1', icon TEXT DEFAULT 'tag', is_default BOOLEAN DEFAULT 0)`);
+        // Seed default categories if table is empty
+        cDb.get("SELECT COUNT(*) as cnt FROM categories", (err, row) => {
+            if (!err && row && row.cnt === 0) {
+                const defaults = [
+                    ['Food', '#27ae60', 'utensils', 1],
+                    ['Housing', '#3498db', 'home', 1],
+                    ['Transportation', '#f39c12', 'car', 1],
+                    ['Leisure', '#9b59b6', 'gamepad', 1],
+                    ['Shopping', '#e74c3c', 'shopping-bag', 1],
+                    ['Health', '#1abc9c', 'heartbeat', 1],
+                    ['Income', '#2ecc71', 'wallet', 1],
+                    ['Miscellaneous', '#95a5a6', 'tag', 1]
+                ];
+                const stmt = cDb.prepare("INSERT OR IGNORE INTO categories (name, color, icon, is_default) VALUES (?, ?, ?, ?)");
+                defaults.forEach(d => stmt.run(d));
+                stmt.finalize();
+            }
+        });
     });
     return cDb;
 }
@@ -55,6 +74,7 @@ app.get('/insights', (req, res) => sendTemplate(res, 'insights.html'));
 app.get('/settings', (req, res) => sendTemplate(res, 'settings.html'));
 app.get('/support', (req, res) => sendTemplate(res, 'support.html'));
 app.get('/admin', (req, res) => sendTemplate(res, 'admin.html'));
+app.get('/dev-tools', (req, res) => sendTemplate(res, 'dev-tools.html'));
 app.get('/logout', (req, res) => sendTemplate(res, 'logout.html'));
 app.get('/tos', (req, res) => sendTemplate(res, 'tos.html'));
 app.get('/impressum', (req, res) => sendTemplate(res, 'impressum.html'));
@@ -309,6 +329,19 @@ app.get("/api/transactions", (req, res) => {
     } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
+// Index status: count + latest timestamp (used by client IndexManager to check freshness)
+app.get("/api/transactions/index-status", (req, res) => {
+    const { company_id, user_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.get("SELECT COUNT(*) as count, MAX(id) as latest_id FROM transactions WHERE user_id = ?", [user_id], (err, row) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ count: row?.count || 0, latest_id: row?.latest_id || 0 });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
 app.post('/api/transactions', (req, res) => {
     const { company_id, user_id, name, kategorie, wert, sender, empfaenger, timestamp, beschreibung } = req.body;
     if (!company_id) return res.status(400).json({ error: "Required." });
@@ -330,8 +363,70 @@ app.delete('/api/transactions/:id', (req, res) => {
     cDb.run("DELETE FROM transactions WHERE id = ?", req.params.id, () => res.json({ success: true }));
 });
 
+// --- Categories API ---
+app.get('/api/categories', (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.all("SELECT * FROM categories ORDER BY is_default DESC, name ASC", (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ categories: rows || [] });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.post('/api/categories', (req, res) => {
+    const { company_id, name, color, icon } = req.body;
+    if (!company_id || !name || !name.trim()) return res.status(400).json({ error: "company_id and name required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.run("INSERT INTO categories (name, color, icon, is_default) VALUES (?, ?, ?, 0)",
+            [name.trim(), color || '#6f42c1', icon || 'tag'],
+            function(err) {
+                if (err) {
+                    if (err.message.includes('UNIQUE')) return res.status(409).json({ error: "Category already exists" });
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ success: true, id: this.lastID });
+            });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.put('/api/categories/:id', (req, res) => {
+    const { company_id, name, color, icon } = req.body;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.run("UPDATE categories SET name = ?, color = ?, icon = ? WHERE id = ? AND is_default = 0",
+            [name.trim(), color || '#6f42c1', icon || 'tag', req.params.id],
+            function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                if (this.changes === 0) return res.status(400).json({ error: "Cannot edit default categories" });
+                res.json({ success: true });
+            });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/categories/:id', (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.run("DELETE FROM categories WHERE id = ? AND is_default = 0", req.params.id, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(400).json({ error: "Cannot delete default categories" });
+            res.json({ success: true });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
 // --- AI Tools Definitions ---
-const AI_TOOLS = [
+function getAiTools(categoryNames) {
+    const catList = categoryNames && categoryNames.length > 0 
+        ? categoryNames.join(', ') 
+        : 'Food, Housing, Transportation, Leisure, Shopping, Health, Income, Miscellaneous';
+    return [
     {
         type: "function",
         function: {
@@ -343,7 +438,7 @@ const AI_TOOLS = [
                     name: { type: "string", description: "Short name of the transaction (e.g. 'Coffee')" },
                     description: { type: "string", description: "More details about the transaction (e.g. 'Latte Macchiato at Starbucks')" },
                     amount: { type: "number", description: "The amount. NEGATIVE for expenses, POSITIVE for income." },
-                    category: { type: "string", description: "The category (e.g. Food, Housing, Transportation, Leisure, Shopping, Health, Income, Miscellaneous)" },
+                    category: { type: "string", description: `The category. Available categories: ${catList}` },
                     date: { type: "string", description: "ISO8601 date string. Use 'today' if current date is needed." },
                     sender: { type: "string", description: "Who sent the money" },
                     empfaenger: { type: "string", description: "Who received the money" }
@@ -381,6 +476,7 @@ const AI_TOOLS = [
         }
     }
 ];
+}
 
 // --- Joule Chat API (Native Tool Use) ---
 
@@ -395,6 +491,13 @@ app.post('/api/chat', async (req, res) => {
         const cDb = getCompanyDb(company_id);
         const summary = await getDatabaseSummary(company_id, user_id);
         const userRow = await dbQuery(cDb, "SELECT users.full_name, user_settings.nickname FROM users LEFT JOIN user_settings ON users.id = user_settings.user_id WHERE users.id = ?", [user_id]);
+        
+        // Fetch dynamic categories for AI tools
+        const categoryRows = await new Promise((resolve) => {
+            cDb.all("SELECT name FROM categories ORDER BY is_default DESC, name ASC", (err, rows) => resolve(err ? [] : (rows || [])));
+        });
+        const categoryNames = categoryRows.map(r => r.name);
+        const aiTools = getAiTools(categoryNames);
         
         let nickname = userRow?.nickname || (userRow?.full_name ? userRow.full_name.split(' ')[0] : "User");
         const now = new Date();
@@ -438,7 +541,7 @@ ${summary}
                 max_tokens: 1024
             };
             if (useTools) {
-                body.tools = AI_TOOLS;
+                body.tools = aiTools;
                 body.tool_choice = "auto";
             }
             const controller = new AbortController();

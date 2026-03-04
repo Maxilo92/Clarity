@@ -176,8 +176,9 @@
 
         cmDelete.onclick = () => {
             if (selectedTransactionId && confirm('Really delete?')) {
+                const delId = selectedTransactionId;
                 const userStr = localStorage.getItem('clarityUser'); let companyIdQuery = ''; if (userStr) { const user = JSON.parse(userStr); if (user.company_id) companyIdQuery = `?company_id=${user.company_id}`; }
-                fetch('/api/transactions/' + selectedTransactionId + companyIdQuery, { method: 'DELETE' }).then(() => { loadTransactions(); document.dispatchEvent(new Event('dataUpdated')); });
+                fetch('/api/transactions/' + delId + companyIdQuery, { method: 'DELETE' }).then(() => { if (window.DataManager && window.DataManager.invalidateCache) window.DataManager.invalidateCache(); if (window.IndexManager) window.IndexManager.removeFromIndex(delId); loadTransactions(); document.dispatchEvent(new Event('dataUpdated')); });
             }
         };
 
@@ -195,7 +196,7 @@
             const editId = form.dataset.editId;
             if (editId && confirm('Really delete this transaction?')) {
                 const userStr = localStorage.getItem('clarityUser'); let companyIdQuery = ''; if (userStr) { const user = JSON.parse(userStr); if (user.company_id) companyIdQuery = `?company_id=${user.company_id}`; }
-                fetch('/api/transactions/' + editId + companyIdQuery, { method: 'DELETE' }).then(() => { modal.style.display = 'none'; loadTransactions(); document.dispatchEvent(new Event('dataUpdated')); });
+                fetch('/api/transactions/' + editId + companyIdQuery, { method: 'DELETE' }).then(() => { modal.style.display = 'none'; if (window.DataManager && window.DataManager.invalidateCache) window.DataManager.invalidateCache(); if (window.IndexManager) window.IndexManager.removeFromIndex(editId); loadTransactions(); document.dispatchEvent(new Event('dataUpdated')); });
             }
         };
 
@@ -204,7 +205,17 @@
             if (document.getElementById('tType').value === 'expense') wert = -Math.abs(wert);
             const userStr = localStorage.getItem('clarityUser'); let userId = null; let companyId = null; if (userStr) { const user = JSON.parse(userStr); userId = user.id; companyId = user.company_id; }
             const payload = { name: document.getElementById('tName').value, beschreibung: document.getElementById('tBeschreibung').value, kategorie: document.getElementById('tKategorie').value, wert: wert, sender: document.getElementById('tSender').value, empfaenger: document.getElementById('tEmpfaenger').value, timestamp: new Date(document.getElementById('tDate').value).toISOString(), user_id: userId, company_id: companyId };
-            fetch(editId ? '/api/transactions/' + editId : '/api/transactions', { method: editId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(() => { modal.style.display = 'none'; form.reset(); delete form.dataset.editId; loadTransactions(); document.dispatchEvent(new Event('dataUpdated')); });
+            fetch(editId ? '/api/transactions/' + editId : '/api/transactions', { method: editId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(() => {
+                modal.style.display = 'none'; form.reset(); delete form.dataset.editId;
+                if (window.DataManager && window.DataManager.invalidateCache) window.DataManager.invalidateCache();
+                // Incrementally update the local index
+                if (window.IndexManager) {
+                    const indexEntry = { id: editId ? parseFloat(editId) : Date.now(), name: payload.name, kategorie: payload.kategorie, wert: payload.wert, timestamp: payload.timestamp, sender: payload.sender, empfaenger: payload.empfaenger, beschreibung: payload.beschreibung, user_id: payload.user_id };
+                    if (editId) window.IndexManager.updateInIndex(indexEntry);
+                    else window.IndexManager.addToIndex(indexEntry);
+                }
+                loadTransactions(); document.dispatchEvent(new Event('dataUpdated'));
+            });
         };
 
         btnAdd.onclick = () => { if (form) form.reset(); delete form.dataset.editId; if (btnDeleteTransaction) btnDeleteTransaction.style.display = 'none'; document.getElementById('tDate').value = new Date().toISOString().split('T')[0]; modal.style.display = 'flex'; };
@@ -212,6 +223,19 @@
 
         loadTransactions();
         document.addEventListener('dataUpdated', () => { loadTransactions(); });
+
+        // Pick up ?search= from URL (e.g. coming from Insights subscription click)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSearch = urlParams.get('search');
+        if (urlSearch) {
+            currentSearchQuery = urlSearch;
+            if (searchInput) searchInput.value = urlSearch;
+            syncSearchActiveClass();
+            loadTransactions(false);
+            // Clean URL so a reload doesn't re-apply the filter
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
         document.addEventListener('forceFilter', (e) => {
             const { category, date, search, id } = e.detail;
             if (id !== undefined) { currentIdFilter = id; if (id) { currentCategoryFilter = 'all'; currentDateFilter = ''; currentSearchQuery = ''; if (searchInput) searchInput.value = ''; } }
