@@ -1,5 +1,6 @@
 const AUTH_KEY = 'clarityAuth';
 const USER_KEY = 'clarityUser';
+const REMEMBERED_KEY = 'clarityRemembered';
 
 // IMMEDIATE AUTH GUARD
 (async function() {
@@ -15,11 +16,10 @@ const USER_KEY = 'clarityUser';
     }
 
     const publicRoutes = ['/login', '/signup', '/register-company', '/logout', '/404'];
-    const isPublic = publicRoutes.some(r => path === r || path.startsWith(r + '.html'));
-    
     const isLoginPage = path.endsWith('login.html') || path === '/login';
     const isSignupPage = path.includes('/signup') || path.includes('/register-company');
     const isIndex = path === '/' || path.endsWith('index.html');
+    const isPublic = publicRoutes.some(r => path === r || path.startsWith(r + '.html'));
 
     // IF LOGGED IN: Validate session with server to catch DB resets
     if (isAuth) {
@@ -44,15 +44,16 @@ const USER_KEY = 'clarityUser';
         }
     }
 
-    // Redirect unauthenticated users to login
-    if (!isAuth && !isPublic) {
+    // Redirect unauthenticated users to login ONLY for non-public pages
+    // EXCEPTION: Home page (Index) is now accessible to everyone
+    if (!isAuth && !isPublic && !isIndex) {
         window.location.href = '/login';
         return;
     }
 
-    // Redirect authenticated users away from LOGIN or INDEX to dashboard
-    // BUT allow them to stay on SIGNUP/REGISTER-COMPANY (intent to create new account)
-    if (isAuth && (isLoginPage || isIndex)) {
+    // Redirect authenticated users away from LOGIN to dashboard
+    // BUT allow them to stay on INDEX (Home) and other public pages if they want
+    if (isAuth && isLoginPage) {
         window.location.href = '/dashboard';
         return;
     }
@@ -70,11 +71,47 @@ function signOut() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('loginForm');
+  const rememberedBox = document.getElementById('rememberedUserBox');
+  const loginHeader = document.getElementById('loginHeader');
+
+  // --- Remembered User Logic ---
+  if (rememberedBox && !isAuthenticated()) {
+      const rememberedStr = localStorage.getItem(REMEMBERED_KEY);
+      if (rememberedStr) {
+          try {
+              const remUser = JSON.parse(rememberedStr);
+              document.getElementById('rememberedName').textContent = remUser.full_name;
+              document.getElementById('rememberedEmail').textContent = remUser.email;
+              document.getElementById('btnName').textContent = remUser.full_name;
+              document.getElementById('userInitial').textContent = remUser.full_name.charAt(0);
+              
+              rememberedBox.style.display = 'block';
+              if (loginForm) loginForm.style.display = 'none';
+              if (loginHeader) loginHeader.style.display = 'none';
+
+              document.getElementById('btnLoginRemembered').onclick = () => {
+                  localStorage.setItem(AUTH_KEY, 'true');
+                  localStorage.setItem(USER_KEY, JSON.stringify(remUser));
+                  window.location.href = '/dashboard';
+              };
+
+              document.getElementById('btnSwitchAccount').onclick = (e) => {
+                  e.preventDefault();
+                  rememberedBox.style.display = 'none';
+                  if (loginForm) loginForm.style.display = 'block';
+                  if (loginHeader) loginHeader.style.display = 'block';
+              };
+          } catch(e) { console.error("Error loading remembered user", e); }
+      }
+  }
+
+  // --- Normal Login Logic ---
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = loginForm.email.value.trim();
       const password = loginForm.password.value.trim();
+      const remember = document.getElementById('remember')?.checked;
       const errorEl = document.getElementById('loginError');
 
       if (!email || !password) {
@@ -97,6 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localStorage.setItem(AUTH_KEY, 'true');
         localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        
+        // Save for "Remember Me" if checked
+        if (remember) {
+            localStorage.setItem(REMEMBERED_KEY, JSON.stringify(data.user));
+        } else {
+            localStorage.removeItem(REMEMBERED_KEY);
+        }
         
         if (errorEl) errorEl.textContent = '';
         window.location.href = '/dashboard';
