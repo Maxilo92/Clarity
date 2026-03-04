@@ -281,7 +281,7 @@
 
         document.getElementById('imCopyLink').onclick = () => {
             const baseUrl = window.location.origin;
-            const inviteUrl = `${baseUrl}/templates/signup.html?invite_code=${selectedInviteCode}`;
+            const inviteUrl = `${baseUrl}/signup?invite_code=${selectedInviteCode}`;
             navigator.clipboard.writeText(inviteUrl);
             alert("Link copied!");
         };
@@ -303,7 +303,7 @@
                 if (data.error) throw new Error(data.error);
 
                 const baseUrl = window.location.origin;
-                const inviteUrl = `${baseUrl}/templates/signup.html?invite_code=${data.code}`;
+                const inviteUrl = `${baseUrl}/signup?invite_code=${data.code}`;
 
                 document.getElementById('inviteResult').style.display = 'block';
                 document.getElementById('newCodeDisplay').value = data.code;

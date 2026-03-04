@@ -75,8 +75,9 @@ app.get('/impressum', (req, res) => res.sendFile(path.join(APP_DIR, 'templates',
 
 app.get('/templates/:page.html', (req, res) => {
     const page = req.params.page;
-    if (page === 'index') return res.redirect('/');
-    res.redirect('/' + page);
+    const target = page === 'index' ? '/' : '/' + page;
+    const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    res.redirect(301, target + queryString);
 });
 
 const APP_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version;

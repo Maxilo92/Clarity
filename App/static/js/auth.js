@@ -16,47 +16,34 @@ const REMEMBERED_KEY = 'clarityRemembered';
     }
 
     const publicRoutes = ['/login', '/signup', '/register-company', '/logout', '/404'];
-    const isLoginPage = path.endsWith('login.html') || path === '/login';
-    const isSignupPage = path.includes('/signup') || path.includes('/register-company');
-    const isIndex = path === '/' || path.endsWith('index.html');
     const isPublic = publicRoutes.some(r => path === r || path.startsWith(r + '.html'));
+    const isIndex = path === '/' || path.endsWith('index.html');
 
     // IF LOGGED IN: Validate session with server to catch DB resets
-    if (isAuth) {
+    if (isAuth && !isPublic && !isIndex) {
         const userStr = localStorage.getItem(USER_KEY);
         if (userStr) {
             try {
                 const user = JSON.parse(userStr);
-                // Ping config API to see if user still exists (skip if on logout)
-                if (path !== '/logout' && !path.startsWith('/logout')) {
-                    const res = await fetch(`/api/config?user_id=${user.id}&company_id=${user.company_id}`);
-                    if (!res.ok) throw new Error("Session invalid");
-                }
+                const res = await fetch(`/api/config?user_id=${user.id}&company_id=${user.company_id}`);
+                if (!res.ok) throw new Error("Session invalid");
             } catch (e) {
                 console.warn("Session stale, logging out...");
                 localStorage.removeItem(AUTH_KEY);
                 localStorage.removeItem(USER_KEY);
-                if (!isPublic) {
-                    window.location.href = '/login';
-                    return;
-                }
+                window.location.href = '/login';
+                return;
             }
         }
     }
 
-    // Redirect unauthenticated users to login ONLY for non-public pages
-    // EXCEPTION: Home page (Index) is now accessible to everyone
+    // Redirect unauthenticated users to login ONLY for non-public protected pages
     if (!isAuth && !isPublic && !isIndex) {
         window.location.href = '/login';
         return;
     }
 
-    // Redirect authenticated users away from LOGIN to dashboard
-    // BUT allow them to stay on INDEX (Home) and other public pages if they want
-    if (isAuth && isLoginPage) {
-        window.location.href = '/dashboard';
-        return;
-    }
+    // WE REMOVED THE AUTO-REDIRECT FROM LOGIN TO DASHBOARD TO PREVENT UNWANTED AUTO-LOGIN
 })();
 
 function isAuthenticated() {
@@ -75,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginHeader = document.getElementById('loginHeader');
 
   // --- Remembered User Logic ---
-  if (rememberedBox && !isAuthenticated()) {
+  if (rememberedBox) {
       const rememberedStr = localStorage.getItem(REMEMBERED_KEY);
       if (rememberedStr) {
           try {
@@ -83,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
               document.getElementById('rememberedName').textContent = remUser.full_name;
               document.getElementById('rememberedEmail').textContent = remUser.email;
               document.getElementById('btnName').textContent = remUser.full_name;
-              document.getElementById('userInitial').textContent = remUser.full_name.charAt(0);
+              document.getElementById('userInitial').textContent = (remUser.full_name || "?").charAt(0);
               
               rememberedBox.style.display = 'block';
               if (loginForm) loginForm.style.display = 'none';
