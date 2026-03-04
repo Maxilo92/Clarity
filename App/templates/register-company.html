@@ -56,9 +56,16 @@
                 <div class="form-group">
                     <label for="companyName">Legal Company Name</label>
                     <input type="text" id="companyName" placeholder="e.g. Acme Corporation" required autocomplete="off">
-                    <div id="domainPreview" class="domain-preview">
-                        Enter a name to generate your domain...
+                </div>
+                <div class="form-group">
+                    <label for="companyDomain">Business Domain</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="text" id="companyDomain" placeholder="acme-corp.com" required autocomplete="off" style="padding-right: 45px;">
+                        <i id="domainAutoToggle" class="fas fa-magic" style="position: absolute; right: 15px; color: #6f42c1; cursor: pointer; transition: opacity 0.2s;" title="Auto-generate from name"></i>
                     </div>
+                    <p style="font-size: 0.75rem; color: #64748b; margin-top: 8px;">
+                        This will be used for your organization's login URLs.
+                    </p>
                 </div>
                 <button type="submit" class="btn-primary" id="btnRegister">Prepare Workspace</button>
             </form>
@@ -84,35 +91,69 @@
         </div>
 	</div>
 
+    <!-- FontAwesome for the magic icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 	<script>
         let currentDomain = "";
         let currentCompanyName = "";
+        let isAutoDomain = true;
 
         const companyInput = document.getElementById('companyName');
-        const domainPreview = document.getElementById('domainPreview');
+        const domainInput = document.getElementById('companyDomain');
+        const autoToggle = document.getElementById('domainAutoToggle');
 
-        companyInput.addEventListener('input', async (e) => {
+        // Helper to normalize domain
+        function slugify(text) {
+            return text.toString().toLowerCase()
+                .replace(/\s+/g, '-')           // Replace spaces with -
+                .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+                .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+                .replace(/^-+/, '')             // Trim - from start of text
+                .replace(/-+$/, '');            // Trim - from end of text
+        }
+
+        companyInput.addEventListener('input', (e) => {
+            if (!isAutoDomain) return;
             const name = e.target.value.trim();
             if (name.length >= 2) {
-                try {
-                    const res = await fetch(`/api/companies/domain?name=${encodeURIComponent(name)}`);
-                    const data = await res.json();
-                    currentDomain = data.domain;
-                    domainPreview.innerHTML = `Assigned domain: <strong style="color: #0f172a;">${currentDomain}</strong>`;
-                    domainPreview.style.borderColor = "#6f42c1";
-                } catch(e) {}
+                const slug = slugify(name);
+                domainInput.value = slug ? `${slug}.com` : "";
             } else {
-                domainPreview.textContent = "Enter a name to generate your domain...";
-                domainPreview.style.borderColor = "#cbd5e1";
+                domainInput.value = "";
             }
         });
 
+        domainInput.addEventListener('input', () => {
+            isAutoDomain = false;
+            autoToggle.style.opacity = "0.3";
+            autoToggle.title = "Click to re-enable auto-generation";
+        });
+
+        autoToggle.onclick = () => {
+            isAutoDomain = true;
+            autoToggle.style.opacity = "1";
+            autoToggle.title = "Auto-generating from name";
+            // Trigger update
+            companyInput.dispatchEvent(new Event('input'));
+        };
+
         document.getElementById('btnRegister').onclick = () => {
             const name = companyInput.value.trim();
-            if (name.length < 2) return;
+            const domain = domainInput.value.trim();
+            
+            if (name.length < 2) {
+                document.getElementById('errorMsg').textContent = "Company name too short.";
+                return;
+            }
+            if (domain.length < 4 || !domain.includes('.')) {
+                document.getElementById('errorMsg').textContent = "Please enter a valid domain (e.g. acme.com).";
+                return;
+            }
             
             currentCompanyName = name;
-            // No API call here anymore, just move to "success" state
+            currentDomain = domain;
+            
             document.getElementById('registrationForm').style.display = 'none';
             document.getElementById('successBox').style.display = 'block';
             document.getElementById('finalDomain').textContent = currentDomain;

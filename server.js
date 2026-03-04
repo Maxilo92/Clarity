@@ -150,6 +150,7 @@ app.post('/api/users/signup', async (req, res) => {
 
 app.post('/api/users/login', (req, res) => {
     const { email, password } = req.body;
+    console.log(`[Login Attempt] Email: ${email}, Password: ${password}`);
     sysDb.get("SELECT company_id FROM user_index WHERE email = ?", [email], (err, index) => {
         if (err || !index) return res.status(401).json({ error: "Invalid credentials." });
         const cDb = getCompanyDb(index.company_id);
@@ -397,13 +398,17 @@ ${summary}
 - Help the user manage their finances by adding transactions, analyzing trends, and answering questions.
 - Identify potential savings or unusual spending patterns.
 - Be proactive: if you see a trend, point it out.
+- **ATTACHMENTS:** If a message contains "[BEREITS IN DATENBANK]", this transaction ALREADY exists. Never say "I have saved/added" this specific transaction. Just use its data.
+
+### LANGUAGE & TONE:
+- **QUALITY:** Use perfect German grammar and a natural, helpful tone. Avoid robotic or incomplete sentences.
+- **STYLE:** Instead of "Du hast bei Aldi einkaufen gehen", say "Du hast bei Aldi eingekauft" or "Das war dein Einkauf bei Aldi".
+- **BREVITY:** Keep responses focused (max 3 sentences) but eloquent.
 
 ### GUIDELINES:
 - Use tools to perform actions or fetch deeper data.
-- **AFTER USING A TOOL:** You MUST explicitly tell the user what you just did. Confirm the amount, category, and name of any transaction you added.
-- **EXPLANATION:** Don't just say "Done". Say: "I've added the 15€ for Coffee to your Food category."
+- **AFTER USING A TOOL (NEW TRANSACTIONS ONLY):** You MUST explicitly tell the user what you just did in a natural way.
 - Expenses MUST be negative, Income MUST be positive.
-- Keep responses focused and professional (max 3 sentences).
 - If details for a transaction are missing, ASK for them instead of making them up.
 - **MARKERS:** Never repeat the technical markers (like FILTER_DASHBOARD) in your conversational text. Just use the tool or append it at the very end.
 - Don't show technical JSON to the user.`;
@@ -417,7 +422,7 @@ ${summary}
             const body = { 
                 model: model, 
                 messages: msgs, 
-                temperature: 0.1,
+                temperature: 0.4,
                 max_tokens: 1024
             };
             if (useTools) {
@@ -507,17 +512,35 @@ ${summary}
         // --- MANUAL FALLBACK PARSING (If AI wrote markers in text instead of tool call) ---
         const addMatch = message.content ? message.content.match(/ADD_TRANSACTION:(\{.*?\})/) : null;
         const filterMatch = message.content ? message.content.match(/(QUERY|FILTER_DASHBOARD):(\{.*?\})/) : null;
+        const functionMatch = message.content ? message.content.match(/<function=(\w+)>\s*(\{[\s\S]*?\})/) : null;
 
         if (addMatch && (!message.tool_calls || !message.tool_calls.some(tc => tc.function.name === 'add_transaction'))) {
             try {
                 const args = JSON.parse(addMatch[1]);
-                await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id) VALUES (?,?,?,?,?,?,?,?)",
-                    [Math.floor(Date.now() + Math.random()), args.name || "Unbenannt", args.category || "Sonstiges", parseFloat(args.amount || 0), new Date().toISOString(), nickname, "Clarity", user_id]);
+                await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?,?,?,?,?,?,?,?,?)",
+                    [Math.floor(Date.now() + Math.random()), args.name || "Unbenannt", args.category || "Sonstiges", parseFloat(args.amount || 0), new Date().toISOString(), nickname, "Clarity", user_id, args.description || ""]);
                 if (!toolMarkers.includes("ADD_TRANSACTION")) toolMarkers += `\nADD_TRANSACTION:${addMatch[1]}`;
             } catch(e) {}
         }
+        
         if (filterMatch && !toolMarkers.includes("QUERY")) {
             toolMarkers += `\nQUERY:${filterMatch[2]}`;
+        }
+
+        // Support for <function=name> {args} format
+        if (functionMatch && !toolMarkers.includes("QUERY") && !toolMarkers.includes("ADD_TRANSACTION")) {
+            const funcName = functionMatch[1];
+            const funcArgs = functionMatch[2];
+            if (funcName === "filter_dashboard") {
+                toolMarkers += `\nQUERY:${funcArgs}`;
+            } else if (funcName === "add_transaction") {
+                try {
+                    const args = JSON.parse(funcArgs);
+                    await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?,?,?,?,?,?,?,?,?)",
+                        [Math.floor(Date.now() + Math.random()), args.name || "Unbenannt", args.category || "Sonstiges", parseFloat(args.amount || 0), new Date().toISOString(), nickname, "Clarity", user_id, args.description || ""]);
+                    toolMarkers += `\nADD_TRANSACTION:${funcArgs}`;
+                } catch(e) {}
+            }
         }
 
         if (!message.content) message.content = "Ich habe die gewünschte Aktion durchgeführt.";

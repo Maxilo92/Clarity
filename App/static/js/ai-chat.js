@@ -18,13 +18,20 @@
     const STORAGE_KEY = `clair_chat_history_${userId}`;
     let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     let isPanelOpen = false;
+    let pendingAttachment = null;
 
     const SYSTEM_PROMPT = `You are Clair, an intelligent financial advisor for "Clarity". 
 Address the user naturally. 
 
+### CONTEXT:
+- If the user attaches a transaction, it is ALREADY in the database. 
+- DO NOT re-add attached transactions. Use their details only to answer the user's question.
+- **IMPORTANT:** Never say "I have saved/added this transaction" when referring to an ATTACHED one. It's already there. Just answer the question.
+- Only use the ADD_TRANSACTION tool if the user explicitly asks to add a NEW, different transaction.
+
 ### DIRECTIVES:
 1. To SEARCH: add QUERY:{"category": "string", "date": "YYYY-MM-DD", "name": "search term"}
-2. To ADD TRANSACTION: add ADD_TRANSACTION:{"name": "Item", "amount": -12.99, "category": "Groceries", "date": "ISO8601"}
+2. To ADD TRANSACTION: add ADD_TRANSACTION:{"name": "Item", "amount": -12.99, "category": "Groceries", "date": "ISO8601", "description": "Details"}
    - EXPENSES must be NEGATIVE numbers (e.g., -2.99 for milk).
    - INCOME must be POSITIVE.
 3. Add these markers at the VERY END of your message.
@@ -60,6 +67,7 @@ Address the user naturally.
             <div class="ai-chat-messages" id="aiChatMessages"></div>
             
             <div class="ai-chat-footer">
+                <div class="ai-chat-attachment-preview" id="aiChatAttachmentPreview"></div>
                 <div class="ai-chat-input-area">
                     <div class="ai-chat-input-wrapper">
                         <textarea id="aiChatInput" placeholder="Frage Clair..." rows="1"></textarea>
@@ -120,6 +128,7 @@ Address the user naturally.
     const panel = document.getElementById('aiChatPanel');
     const overlay = document.getElementById('aiChatOverlay');
     const messagesContainer = document.getElementById('aiChatMessages');
+    const attachmentPreview = document.getElementById('aiChatAttachmentPreview');
     const input = document.getElementById('aiChatInput');
     const sendBtn = document.getElementById('aiChatSend');
     const clearBtn = document.getElementById('aiChatClear');
@@ -150,11 +159,36 @@ Address the user naturally.
 
     overlay.onclick = closeChat;
     closeBtn.onclick = closeChat;
+
+    function showAttachment(t) {
+        pendingAttachment = t;
+        attachmentPreview.innerHTML = `
+            <div class="attachment-bubble">
+                <div class="attachment-icon"><i class="fas fa-paperclip"></i></div>
+                <div class="attachment-info">
+                    <span class="attachment-name">${t.name || t.kategorie}</span>
+                    <span class="attachment-meta">${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(t.wert)}</span>
+                </div>
+                <button class="attachment-remove" id="removeAttachment">&times;</button>
+            </div>
+        `;
+        attachmentPreview.classList.add('visible');
+        document.getElementById('removeAttachment').onclick = hideAttachment;
+    }
+
+    function hideAttachment() {
+        pendingAttachment = null;
+        attachmentPreview.classList.remove('visible');
+        attachmentPreview.innerHTML = '';
+        input.placeholder = "Frage Clair...";
+    }
+
     clearBtn.onclick = () => { 
         if(confirm("Möchtest du den gesamten Chat-Verlauf löschen?")) { 
             chatHistory=[]; 
             localStorage.removeItem(STORAGE_KEY); 
             messagesContainer.innerHTML=""; 
+            hideAttachment();
             appendMessage("Hallo! Ich bin Clair. Wie kann ich dir heute bei deinen Finanzen helfen?", "assistant"); 
         } 
     };
@@ -163,10 +197,9 @@ Address the user naturally.
         const t = e.detail.transaction;
         if (!t) return;
         openChat();
-        input.value = `Ich habe eine Frage zu dieser Transaktion: ${t.kategorie} (${t.wert}€) vom ${new Date(t.timestamp).toLocaleDateString()}. `;
+        showAttachment(t);
+        input.placeholder = "Frage etwas zu dieser Transaktion...";
         input.focus();
-        input.style.height = 'auto';
-        input.style.height = input.scrollHeight + 'px';
     });
 
     const setupBtn = () => { 
@@ -183,15 +216,37 @@ Address the user naturally.
     input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     sendBtn.onclick = sendMessage;
 
-    function appendMessage(text, role, save = true, timestamp = null) {
+    function appendMessage(text, role, save = true, timestamp = null, isHtml = false) {
         if (!text) return;
-        let cleanText = text.replace(/(QUERY|ADD_TRANSACTION):[\s\n]*\{[\s\S]*?\}/gi, '').trim();
+        
+        let displayContent = text;
+        
+        // If it's not already HTML, check if it's a technical attachment message
+        if (!isHtml && role === 'user' && (text.includes('[Anhang:') || text.includes('[BEREITS IN DATENBANK:'))) {
+            const match = text.match(/\[(?:Anhang|BEREITS IN DATENBANK): Transaktion ID (.*?), Name: (.*?), Kategorie: (.*?), Betrag: (.*?)€, Datum: (.*?)\](.*)$/s);
+            if (match) {
+                const [_, id, name, cat, amount, date, restText] = match;
+                displayContent = `
+                    <div class="attachment-bubble small"><i class="fas fa-paperclip" style="margin-right: 5px;"></i> ${name !== 'N/A' ? name : cat} (${amount}€)</div>
+                    <div>${restText.trim() || 'Frage zu dieser Transaktion'}</div>
+                `;
+                isHtml = true;
+            }
+        }
+
+        // Clean technical markers from any text that isn't supposed to be HTML
+        let cleanText = isHtml ? displayContent : displayContent
+            .replace(/\[(?:Anhang|BEREITS IN DATENBANK):.*?\]/gs, '') // Remove ANY technical attachment blocks
+            .replace(/(QUERY|ADD_TRANSACTION|FILTER_DASHBOARD|GET_SPENDING_ANALYSIS):[\s\n]*\{[\s\S]*?\}/gi, '')
+            .replace(/<function=.*?>[\s\S]*$/gi, '')
+            .trim();
+            
         if (!cleanText && role === 'assistant') return;
 
         const msg = document.createElement('div');
         msg.className = `ai-message ai-message--${role==='user'?'user':'bot'}`;
         
-        const content = role === 'assistant' && typeof marked !== 'undefined' ? marked.parse(cleanText) : cleanText;
+        const finalBody = !isHtml && role === 'assistant' && typeof marked !== 'undefined' ? marked.parse(cleanText) : cleanText;
         
         const avatar = role === 'user' ? 
             `<div class="ai-message-avatar user-avatar">${userName.charAt(0).toUpperCase()}</div>` : 
@@ -202,7 +257,7 @@ Address the user naturally.
         msg.innerHTML = `
             ${avatar}
             <div class="ai-message-bubble-container">
-                <div class="ai-message-bubble">${content}</div>
+                <div class="ai-message-bubble">${finalBody}</div>
                 <div class="ai-message-time">${timeStr}</div>
             </div>
         `;
@@ -210,19 +265,34 @@ Address the user naturally.
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         if (save) { 
-            const newMsg = { role, content: text, time: new Date().getTime() };
+            const newMsg = { role, content: text, time: new Date().getTime(), isHtml: false }; // Always save raw text to history
             chatHistory.push(newMsg); 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory.slice(-20))); 
         }
     }
 
     if (chatHistory.length === 0) appendMessage("Hallo! Ich bin Clair. Wie kann ich dir heute bei deinen Finanzen helfen?", "assistant", true);
-    else chatHistory.forEach(m => appendMessage(m.content, m.role, false, m.time));
+    else chatHistory.forEach(m => appendMessage(m.content, m.role, false, m.time, m.isHtml));
 
     async function sendMessage() {
-        const text = input.value.trim(); if (!text) return;
+        const text = input.value.trim(); if (!text && !pendingAttachment) return;
         input.value = ''; input.style.height = 'auto';
-        appendMessage(text, 'user');
+        
+        if (pendingAttachment) {
+            const t = pendingAttachment;
+            const attachmentSummary = `[BEREITS IN DATENBANK: Transaktion ID ${t.id}, Name: ${t.name || 'N/A'}, Kategorie: ${t.kategorie}, Betrag: ${t.wert}€, Datum: ${t.timestamp}]`;
+            const userMsgContent = `
+                <div class="attachment-bubble small"><i class="fas fa-paperclip" style="margin-right: 5px;"></i> ${t.name || t.kategorie} (${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(t.wert)})</div>
+                <div>${text || 'Frage zu dieser Transaktion'}</div>
+            `;
+            // Save the technical summary for the AI, but show the HTML bubble
+            appendMessage(userMsgContent, 'user', false); // Don't save HTML to history for API
+            chatHistory.push({ role: 'user', content: `${attachmentSummary} ${text}`.trim(), time: new Date().getTime(), isHtml: false });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory.slice(-20))); 
+            hideAttachment();
+        } else {
+            appendMessage(text, 'user');
+        }
         
         const typing = document.createElement('div');
         typing.className = 'ai-message ai-message--bot ai-typing';
@@ -257,7 +327,10 @@ Address the user naturally.
             let reply = data.choices[0].message.content;
             
             // Clean markers from reply before showing to user
-            const cleanedReply = reply.replace(/(QUERY|ADD_TRANSACTION|FILTER_DASHBOARD|GET_SPENDING_ANALYSIS):\{.*?\}/g, '').trim();
+            const cleanedReply = reply
+                .replace(/(QUERY|ADD_TRANSACTION|FILTER_DASHBOARD|GET_SPENDING_ANALYSIS):[\s\n]*\{[\s\S]*?\}/gi, '')
+                .replace(/<function=.*?>[\s\S]*$/gi, '') // Remove <function=...> and everything after it
+                .trim();
             
             typing.remove();
             appendMessage(cleanedReply, 'assistant');
