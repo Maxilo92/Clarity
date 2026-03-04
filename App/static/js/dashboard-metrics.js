@@ -89,9 +89,72 @@
             .then(res => res.json())
             .then(data => {
                 transactions = data.eintraege || [];
+                updateTimeframeSelect();
                 updateDashboard();
             })
             .catch(err => console.error("Error fetching transactions for dashboard:", err));
+    }
+
+    function updateTimeframeSelect() {
+        const select = document.getElementById('chartTimeframeSelect');
+        if (!select || transactions.length === 0) return;
+
+        const currentValue = select.value;
+        const yearsWithData = new Set();
+        const quartersWithData = new Set(); // Format: "YYYYQX"
+
+        transactions.forEach(t => {
+            const d = new Date(t.timestamp);
+            const year = d.getFullYear();
+            const month = d.getMonth();
+            const quarter = Math.floor(month / 3) + 1;
+            yearsWithData.add(year);
+            quartersWithData.add(`${year}Q${quarter}`);
+        });
+
+        const sortedYears = Array.from(yearsWithData).sort((a, b) => b - a);
+        const now = new Date();
+        const currentYear = now.getFullYear();
+
+        // Clear existing dynamic groups (Quarters) but keep Presets if needed, 
+        // actually let's rebuild the whole innerHTML for better control
+        let html = '<optgroup label="Presets">';
+        html += '<option value="week">This Week</option>';
+        html += '<option value="month">This Month</option>';
+        
+        // Add years that have data
+        sortedYears.forEach(y => {
+            const label = (y === currentYear) ? `This Year (${y})` : (y === currentYear - 1 ? `Last Year (${y})` : `Year ${y}`);
+            const val = (y === currentYear) ? 'year' : (y === currentYear - 1 ? 'last_year' : y.toString());
+            html += `<option value="${val}">${label}</option>`;
+        });
+        
+        html += '<option value="custom">Custom Range...</option>';
+        html += '</optgroup>';
+
+        // Add Quarters per Year
+        sortedYears.forEach(y => {
+            let hasAnyQuarterInYear = false;
+            let qHtml = `<optgroup label="Quarters ${y}">`;
+            for (let q = 1; q <= 4; q++) {
+                if (quartersWithData.has(`${y}Q${q}`)) {
+                    qHtml += `<option value="${y}Q${q}">${y} - Q${q}</option>`;
+                    hasAnyQuarterInYear = true;
+                }
+            }
+            qHtml += '</optgroup>';
+            if (hasAnyQuarterInYear) html += qHtml;
+        });
+
+        select.innerHTML = html;
+        
+        // Restore value if it still exists, otherwise default to 'year'
+        const optionExists = Array.from(select.options).some(opt => opt.value === currentValue);
+        if (optionExists) {
+            select.value = currentValue;
+        } else {
+            select.value = 'year';
+        }
     }
 
     function updateDashboard() {
@@ -135,6 +198,13 @@
         else if (timeframe === 'last_year') {
             startDate = new Date(now.getFullYear() - 1, 0, 1);
             endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+            labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            bucketType = 'month';
+        }
+        else if (timeframe.match(/^[0-9]{4}$/)) {
+            const year = parseInt(timeframe);
+            startDate = new Date(year, 0, 1);
+            endDate = new Date(year, 11, 31, 23, 59, 59, 999);
             labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             bucketType = 'month';
         }
@@ -220,8 +290,15 @@
             currentBucketIdx = (now.getDay() + 6) % 7;
         } else if (timeframe === 'month') {
             currentBucketIdx = now.getDate() - 1;
-        } else if (timeframe === 'year' || timeframe === 'last_year') {
-            currentBucketIdx = timeframe === 'year' ? now.getMonth() : 12;
+        } else if (timeframe === 'year' || timeframe === 'last_year' || timeframe.match(/^[0-9]{4}$/)) {
+            let year;
+            if (timeframe === 'year') year = now.getFullYear();
+            else if (timeframe === 'last_year') year = now.getFullYear() - 1;
+            else year = parseInt(timeframe);
+
+            if (year < now.getFullYear()) currentBucketIdx = 12; // In the past
+            else if (year > now.getFullYear()) currentBucketIdx = -1; // In the future
+            else currentBucketIdx = now.getMonth(); // Current year
         } else if (timeframe.includes('Q')) {
              const year = parseInt(timeframe.substring(0, 4));
              if (year < now.getFullYear()) currentBucketIdx = 13;

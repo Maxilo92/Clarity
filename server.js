@@ -82,6 +82,7 @@ app.use(express.json());
 
 // Config API
 app.get("/api/config", (req, res) => {
+    userConfig.app_version = APP_VERSION;
     res.json(userConfig);
 });
 
@@ -96,6 +97,7 @@ app.post("/api/config", (req, res) => {
     }
 
     try {
+        userConfig.app_version = APP_VERSION;
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(userConfig, null, 2));
         res.json({ success: true });
     } catch (e) {

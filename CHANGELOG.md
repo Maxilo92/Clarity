@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.4] - 2026-03-04
+### Added
+- Dynamische Filterung der Dashboard-Zeiträume: Der Selektor zeigt nun nur noch Jahre und Quartale an, für die tatsächlich Transaktionsdaten in der Datenbank existieren.
+
+## [0.3.3] - 2026-03-04
+### Changed
+- Vollständige Konsolidierung der dynamischen Versionsnummerierung über alle App-Seiten.
+- Integration von Versions-Tags und Footer-Informationen in `login.html` und `signup.html`.
+- Sicherstellung, dass alle UI-Komponenten die Version zentral aus der `package.json` über die Config-API beziehen.
+
 ## [0.3.2] - 2026-03-04
 ### Changed
 - Optische Überarbeitung der Startseite (`index.html`) für einen moderneren, "Clarity"-typischen Look.
