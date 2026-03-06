@@ -306,7 +306,7 @@ function getAiTools(categoryNames) {
 
 // --- Support API ---
 app.post('/api/support/send', async (req, res) => {
-    const { company_id, user_id, category, message, contact_email } = req.body;
+    const { company_id, user_id, category, subject, message, contact_email } = req.body;
     
     if (!company_id || !user_id || !message) {
         return res.status(400).json({ error: "Missing information." });
@@ -321,13 +321,26 @@ app.post('/api/support/send', async (req, res) => {
 
         if (!user) return res.status(404).json({ error: "User not found." });
 
-        // Fetch support recipient from environment
+        const supportTopic = (subject || category || 'General').toString().trim() || 'General';
+        const smtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+        // In demo mode (no SMTP configured), accept the request instead of failing.
+        if (!smtpConfigured) {
+            console.log("=== [DEMO MODE] Support Request ===");
+            console.log("Company:", company_id);
+            console.log("User:", `${user.full_name} (${user.email})`);
+            console.log("Topic:", supportTopic);
+            console.log("Message:", message);
+            return res.json({ success: true, demo: true, message: "Support request received (demo mode)." });
+        }
+
+        // Fetch support recipient from environment for real SMTP sends
         const recipient = process.env.SUPPORT_EMAIL_RECEIVER || process.env.SMTP_USER;
-        
         if (!recipient) {
             console.error("[Support API] No recipient configured (SUPPORT_EMAIL_RECEIVER or SMTP_USER).");
             return res.status(500).json({ error: "Support system misconfigured." });
         }
+
         const replyToAddress = (contact_email && contact_email.trim()) 
             ? contact_email.trim() 
             : user.email; // Backend safety fallback
@@ -336,27 +349,17 @@ app.post('/api/support/send', async (req, res) => {
             from: process.env.SMTP_USER,
             to: recipient,
             replyTo: replyToAddress,
-            subject: `[Clarity Support] ${category}: Request from ${user.full_name}`,
+            subject: `[Clarity Support] ${supportTopic}: Request from ${user.full_name}`,
             text: `Support Request from Clarity App\n\n` +
                   `User: ${user.full_name} (${user.email})\n` +
-                  `Category: ${category}\n` +
+                  `Topic: ${supportTopic}\n` +
                   `Contact Email: ${replyToAddress}\n\n` +
                   `Message:\n${message}\n\n` +
                   `--- End of Request ---`
         };
 
-        if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-            await transporter.sendMail(mailOptions);
-            res.json({ success: true });
-        } else {
-            // Fallback for demo/dev without SMTP
-            console.log("=== [DEMO MODE] Support Email ===");
-            console.log("To:", mailOptions.to);
-            console.log("Reply-To:", mailOptions.replyTo);
-            console.log("Subject:", mailOptions.subject);
-            console.log("Content:", mailOptions.text);
-            res.json({ success: true, demo: true });
-        }
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "Support request sent successfully." });
     } catch (e) {
         console.error("[Support API] Error:", e);
         res.status(500).json({ error: "Failed to send support request." });
