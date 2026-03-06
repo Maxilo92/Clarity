@@ -4,6 +4,8 @@
   "description": "Minimal proxy for Gemini / Generative Language API",
   "main": "server.js",
   "scripts": {
+    "postinstall": "node scripts/ensure-sqlite3-linux.js",
+    "prestart": "node scripts/ensure-sqlite3-linux.js",
     "start": "node server.js",
     "dev": "node server.js",
     "test:e2e": "node tests/setup-e2e.js && npx playwright test tests/regression.spec.js"

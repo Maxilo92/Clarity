@@ -68,6 +68,9 @@ Wenn auf Render ein Fehler wie `sqlite3 ... invalid ELF header` auftritt, wurde 
 - Stelle sicher, dass `node_modules/` nicht mit deployed wird (siehe `.renderignore`).
 - Verwende auf Render als **Build Command**: `npm ci`
 - Verwende als **Start Command**: `npm start`
+- Fuehre bei bestehendem Fehler einen **Clear build cache + Manual Deploy** in Render aus.
+
+Zusaetzlich erzwingt das Projekt auf Linux automatisch ein `sqlite3`-Rebuild (`postinstall` und `prestart`), um veraltete oder falsche Native-Binaries aus dem Cache zu ersetzen.
 
 So werden native Module wie `sqlite3` auf Linux korrekt installiert.
 
