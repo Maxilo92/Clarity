@@ -4,7 +4,14 @@ Clarity ist eine mandantenfähige Finanzplattform mit Dashboard, Insights, Admin
 
 ## Version
 
-- Aktueller Stand im Branch `v2`: **1.1.10**
+- **Aktueller Release (Branch `release`):** **1.8.0**
+- Aktueller Stand im Branch `v2`: 1.1.10
+
+### v1.8.0 Highlights
+- 📱 **Clair Mobile Optimization:** Vollständige Mobile-Ready Unterstützung für Clair mit `visualViewport` API und Safe-Area Integration
+- 🎯 **Touch-Friendly:** 44px Minimum-Touch-Targets für bessere Mobile Usability
+- 🔒 **Desktop CSS Fix:** Slider und andere Desktop-Komponenten funktionieren korrekt, wenn Clair geöffnet ist
+- ⌨️ **Keyboard Detection:** Verbesserte iOS-Keyboard-Handling für nahtloses Chat-Erlebnis
 
 ## Hauptfunktionen
 
@@ -23,6 +30,7 @@ Clarity ist eine mandantenfähige Finanzplattform mit Dashboard, Insights, Admin
 - Kontextbezogene Antworten auf Basis der vorhandenen Finanzdaten
 - Tool-gestützte Aktionen (z. B. Transaktion anlegen, Dashboard filtern)
 - Fallback-Logik bei Modell-/Tool-Fehlern
+- **Mobile-Ready:** Optimiert für Smartphones mit vollständiger Keyboard- und Viewport-Unterstützung
 
 ### Admin & Developer Tools
 - Multi-User / Multi-Company Setup (eigene `company_<id>.db` je Firma)
