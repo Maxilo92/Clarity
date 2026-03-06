@@ -2,6 +2,7 @@
     let myChart = null;
     let transactions = [];
     let currentCategory = 'all';
+    let currentSearchQuery = '';
 
     function init() {
         const timeframeSelect = document.getElementById('chartTimeframeSelect');
@@ -42,6 +43,13 @@
             fetchAndRefresh();
         });
 
+        document.addEventListener('forceFilter', (e) => {
+            const { category, search } = e.detail;
+            if (category !== undefined) currentCategory = category;
+            if (search !== undefined) currentSearchQuery = search;
+            fetchAndRefresh();
+        });
+
         document.addEventListener('dataUpdated', fetchAndRefresh);
 
         // Add click listeners to cards for chart filtering
@@ -60,12 +68,25 @@
     function toggleChartDataset(type) {
         if (!myChart) return;
         
-        const typeMap = { 'revenue': 0, 'expenses': 1, 'surplus': 2 };
+        const typeMap = { 'revenue': 4, 'expenses': 5, 'surplus': 6 };
         const index = typeMap[type];
         
         if (index !== undefined) {
             const meta = myChart.getDatasetMeta(index);
-            meta.hidden = meta.hidden === null ? !myChart.data.datasets[index].hidden : null;
+            const isCurrentlyHidden = meta.hidden;
+            const newHiddenState = !isCurrentlyHidden;
+            
+            meta.hidden = newHiddenState;
+
+            // Sync range visibility
+            if (index === 4) { // Revenue
+                myChart.getDatasetMeta(0).hidden = newHiddenState;
+                myChart.getDatasetMeta(1).hidden = newHiddenState;
+            } else if (index === 5) { // Expenses
+                myChart.getDatasetMeta(2).hidden = newHiddenState;
+                myChart.getDatasetMeta(3).hidden = newHiddenState;
+            }
+
             myChart.update();
             updateCardStyles();
         }
@@ -74,7 +95,7 @@
     function updateCardStyles() {
         if (!myChart) return;
         const cards = document.querySelectorAll('.card[data-card-type]');
-        const typeMap = { 'revenue': 0, 'expenses': 1, 'surplus': 2 };
+        const typeMap = { 'revenue': 4, 'expenses': 5, 'surplus': 6 };
 
         cards.forEach(card => {
             const type = card.dataset.cardType;
@@ -95,16 +116,43 @@
     }
 
     function fetchAndRefresh() {
+        // Ensure index is fresh before fetching
+        if (window.IndexManager) {
+            window.IndexManager.ensureIndex().then(() => {
+                return window.IndexManager.getAllTransactions();
+            }).then(entries => {
+                let filtered = entries;
+                if (currentCategory !== 'all') {
+                    filtered = filtered.filter(t => t.kategorie === currentCategory);
+                }
+                if (currentSearchQuery) {
+                    const q = currentSearchQuery.toLowerCase();
+                    filtered = filtered.filter(t => 
+                        (t.name && t.name.toLowerCase().includes(q)) ||
+                        (t.sender && t.sender.toLowerCase().includes(q)) ||
+                        (t.empfaenger && t.empfaenger.toLowerCase().includes(q)) ||
+                        (t.beschreibung && t.beschreibung.toLowerCase().includes(q))
+                    );
+                }
+                transactions = filtered;
+                updateTimeframeSelect();
+                updateDashboard();
+            }).catch(() => fetchFromAPI());
+        } else {
+            fetchFromAPI();
+        }
+    }
+
+    function fetchFromAPI() {
         const userStr = localStorage.getItem('clarityUser');
-        let userIdQuery = '';
         let companyIdQuery = '';
         if (userStr) {
             const user = JSON.parse(userStr);
-            if (user.id) userIdQuery = `&user_id=${user.id}`;
             if (user.company_id) companyIdQuery = `&company_id=${user.company_id}`;
         }
-        let url = `/api/transactions?limit=10000${userIdQuery}${companyIdQuery}`;
+        let url = `/api/transactions?limit=10000${companyIdQuery}`;
         if (currentCategory !== 'all') url += '&category=' + encodeURIComponent(currentCategory);
+        if (currentSearchQuery) url += '&search=' + encodeURIComponent(currentSearchQuery);
 
         fetch(url)
             .then(res => res.json())
@@ -334,14 +382,15 @@
              }
         }
 
-        // Totals should only sum up to Today
+        // Totals should sum up the entire timeframe shown
         const totals = {
-            revenue: revenue.slice(0, currentBucketIdx + 1).reduce((a, b) => a + (b || 0), 0),
-            expenses: expenses.slice(0, currentBucketIdx + 1).reduce((a, b) => a + (b || 0), 0)
+            revenue: revenue.reduce((a, b) => a + (b || 0), 0),
+            expenses: expenses.reduce((a, b) => a + (b || 0), 0)
         };
         totals.surplus = totals.revenue - totals.expenses;
 
         // Advanced Forecast using Subscriptions and Trends
+        let revRange = [], expRange = [];
         if (window.ForecastEngine && currentBucketIdx >= 0 && currentBucketIdx < labels.length) {
             const forecasted = window.ForecastEngine.applyForecast(
                 { revenue, expenses, labels }, 
@@ -354,6 +403,8 @@
             );
             revenue = forecasted.revenue;
             expenses = forecasted.expenses;
+            revRange = forecasted.revRange;
+            expRange = forecasted.expRange;
         } 
         else if (currentBucketIdx >= 0 && currentBucketIdx < labels.length) {
             // Fallback: Visual propagation: make it horizontal from today onwards
@@ -365,10 +416,10 @@
             }
         }
 
-        return { chart: { labels, revenue, expenses, currentBucketIdx }, totals };
-    }
+        return { chart: { labels, revenue, expenses, revRange, expRange, currentBucketIdx }, totals };
+        }
 
-    function updateCards(totals) {
+        function updateCards(totals) {
         const format = (v) => '€' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const revEl = document.querySelector('.card[data-card-type="revenue"] .card-value');
         const expEl = document.querySelector('.card[data-card-type="expenses"] .card-value');
@@ -383,9 +434,9 @@
         if (revBar) revBar.style.width = (totals.revenue / max * 100) + '%';
         if (expBar) expBar.style.width = (totals.expenses / max * 100) + '%';
         if (surBar) surBar.style.width = (Math.max(0, totals.surplus) / max * 100) + '%';
-    }
+        }
 
-    function updateChart(chartData) {
+        function updateChart(chartData) {
         const ctx = document.getElementById('myChart');
         if (!ctx) return;
 
@@ -400,21 +451,64 @@
             pointBackgroundColor: (ctx) => ctx.dataset.borderColor,
             pointBorderColor: '#fff',
             pointBorderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            pointRadius: (ctx) => (ctx.dataset.isRange ? 0 : 4), // No points for range area
+            pointHoverRadius: (ctx) => (ctx.dataset.isRange ? 0 : 6),
             pointHoverBackgroundColor: '#fff',
             pointHoverBorderWidth: 3
         };
 
         const chartDatasets = [
+            // Revenue Range (Forecast Area)
+            {
+                label: 'Revenue Confidence',
+                data: chartData.revRange.map(r => r ? r.max : null),
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(111, 66, 193, 0.1)',
+                fill: false,
+                tension: 0.4,
+                isRange: true,
+                pointRadius: 0
+            },
+            {
+                label: 'Revenue Confidence Min',
+                data: chartData.revRange.map(r => r ? r.min : null),
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(111, 66, 193, 0.1)',
+                fill: '-1', // Fill to previous dataset (max)
+                tension: 0.4,
+                isRange: true,
+                pointRadius: 0
+            },
+            // Expenses Range (Forecast Area)
+            {
+                label: 'Expenses Confidence',
+                data: chartData.expRange.map(r => r ? r.max : null),
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                fill: false,
+                tension: 0.4,
+                isRange: true,
+                pointRadius: 0
+            },
+            {
+                label: 'Expenses Confidence Min',
+                data: chartData.expRange.map(r => r ? r.min : null),
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                fill: '-1',
+                tension: 0.4,
+                isRange: true,
+                pointRadius: 0
+            },
+            // Main Lines
             { 
                 label: 'Revenue', data: chartData.revenue, borderColor: '#6f42c1', 
-                backgroundColor: 'rgba(111, 66, 193, 0.1)', fill: true, tension: 0.4, 
+                backgroundColor: 'transparent', fill: false, tension: 0.4, 
                 segment: getSegment(), ...commonPointStyles 
             },
             { 
                 label: 'Expenses', data: chartData.expenses, borderColor: '#e74c3c', 
-                backgroundColor: 'rgba(231, 76, 60, 0.1)', fill: true, tension: 0.4, 
+                backgroundColor: 'transparent', fill: false, tension: 0.4, 
                 segment: getSegment(), ...commonPointStyles 
             },
             { 
@@ -424,13 +518,12 @@
             }
         ];
 
-        if (myChart) {
+        if (myChart && myChart.data.datasets.length === chartDatasets.length) {
             // Keep visibility status when data is updated
-            myChart.data.datasets.forEach((ds, i) => {
-                const newDs = chartDatasets[i];
-                ds.data = newDs.data;
-                ds.segment = newDs.segment;
-                Object.assign(ds, commonPointStyles);
+            chartDatasets.forEach((newDs, i) => {
+                myChart.data.datasets[i].data = newDs.data;
+                if (newDs.segment) myChart.data.datasets[i].segment = newDs.segment;
+                Object.assign(myChart.data.datasets[i], commonPointStyles);
             });
             myChart.data.labels = chartData.labels;
             myChart.options.plugins.todayLine = { index: chartData.currentBucketIdx };
@@ -438,13 +531,14 @@
             updateCardStyles();
         }
         else {
+            if (myChart) myChart.destroy();
             // Custom plugin to draw vertical line for today
             const todayLinePlugin = {
                 id: 'todayLine',
                 afterDraw: (chart, args, options) => {
                     const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
                     if (options.index === undefined || options.index < 0 || options.index >= chart.data.labels.length) return;
-                    
+
                     const xPos = x.getPixelForValue(chart.data.labels[options.index]);
                     ctx.save();
                     ctx.beginPath();
@@ -454,7 +548,7 @@
                     ctx.moveTo(xPos, top);
                     ctx.lineTo(xPos, bottom);
                     ctx.stroke();
-                    
+
                     // Draw "Today" label
                     ctx.fillStyle = '#64748b';
                     ctx.font = 'bold 11px Arial';
@@ -479,10 +573,24 @@
                         }
                     },
                     interaction: { mode: 'index', intersect: false },
-                    scales: { y: { beginAtZero: true, ticks: { callback: (v) => '€' + v.toLocaleString() } } },
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { callback: (v) => '€' + v.toLocaleString('de-DE') },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
                     plugins: {
                         todayLine: { index: chartData.currentBucketIdx },
                         tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            cornerRadius: 8,
                             callbacks: {
                                 title: (items) => {
                                     if (!items.length) return '';
@@ -494,21 +602,46 @@
                                         title += ' (Forecast)';
                                     }
                                     return title;
+                                },
+                                label: (context) => {
+                                    if (context.dataset.isRange) return null; // Hide ranges from tooltip
+                                    return context.dataset.label + ': €' + context.raw.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                 }
                             }
                         },
-                        legend: { position: 'bottom', onClick: (e, legendItem, legend) => {                            const index = legendItem.datasetIndex;
-                            const meta = legend.chart.getDatasetMeta(index);
-                            meta.hidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : null;
-                            legend.chart.update();
-                            updateCardStyles();
-                        }}
+                        legend: { 
+                            position: 'bottom', 
+                            labels: {
+                                usePointStyle: true,
+                                padding: 25,
+                                filter: (item) => !chartDatasets[item.datasetIndex].isRange // Hide range items from legend
+                            },
+                            onClick: (e, legendItem, legend) => {
+                                const index = legendItem.datasetIndex;
+                                const meta = legend.chart.getDatasetMeta(index);
+                                const isHidden = meta.hidden === null ? !legend.chart.data.datasets[index].hidden : meta.hidden;
+                                const newState = !isHidden;
+
+                                meta.hidden = newState;
+
+                                // Sync range visibility
+                                if (index === 4) { // Revenue
+                                    legend.chart.getDatasetMeta(0).hidden = newState;
+                                    legend.chart.getDatasetMeta(1).hidden = newState;
+                                } else if (index === 5) { // Expenses
+                                    legend.chart.getDatasetMeta(2).hidden = newState;
+                                    legend.chart.getDatasetMeta(3).hidden = newState;
+                                }
+
+                                legend.chart.update();
+                                updateCardStyles();
+                            }
+                        }
                     }
                 }
             });
             updateCardStyles();
-        }
-    }
+        }        }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();

@@ -90,6 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('loginForm');
   const rememberedBox = document.getElementById('rememberedUserBox');
   const loginHeader = document.getElementById('loginHeader');
+  const changePasswordForm = document.getElementById('changePasswordForm');
+  let pendingUser = null;
 
   console.log("[Auth UI] DOM Loaded. Checking remembered user...");
 
@@ -171,6 +173,15 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
+        if (data.user.must_change_password) {
+            pendingUser = data.user;
+            loginForm.style.display = 'none';
+            if (loginHeader) loginHeader.style.display = 'none';
+            if (rememberedBox) rememberedBox.style.display = 'none';
+            changePasswordForm.style.display = 'block';
+            return;
+        }
+
         localStorage.setItem(AUTH_KEY, 'true');
         localStorage.setItem(USER_KEY, JSON.stringify(data.user));
         
@@ -184,6 +195,50 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         if (errorEl) errorEl.textContent = 'Server-Fehler beim Login.';
       }
+    });
+  }
+
+  // --- Change Password Form ---
+  if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newPassword = changePasswordForm.newPassword.value;
+        const confirmPassword = changePasswordForm.confirmPassword.value;
+        const errorEl = document.getElementById('changeError');
+
+        if (newPassword.length < 8) {
+            errorEl.textContent = "Das Passwort muss mindestens 8 Zeichen lang sein.";
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            errorEl.textContent = "Die Passwörter stimmen nicht überein.";
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/users/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    user_id: pendingUser.id, 
+                    company_id: pendingUser.company_id, 
+                    new_password: newPassword 
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Now perform full login
+                localStorage.setItem(AUTH_KEY, 'true');
+                pendingUser.must_change_password = 0; // It's changed now
+                localStorage.setItem(USER_KEY, JSON.stringify(pendingUser));
+                window.location.href = '/dashboard';
+            } else {
+                errorEl.textContent = "Fehler beim Ändern des Passworts: " + (data.error || "Unbekannter Fehler");
+            }
+        } catch (err) {
+            errorEl.textContent = "Server-Fehler.";
+        }
     });
   }
 

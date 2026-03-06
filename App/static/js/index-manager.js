@@ -135,10 +135,11 @@
 
     // ── Fetch remote index status ───────────────────────────────────────
     async function fetchIndexStatus() {
-        const { userId, companyId } = getUserInfo();
+        const { companyId, userId } = getUserInfo();
         if (!companyId) return { count: 0, latest_id: 0 };
         try {
-            const res = await fetch(`/api/transactions/index-status?company_id=${companyId}&user_id=${userId}`);
+            const res = await fetch(`/api/transactions/index-status?company_id=${companyId}&requester_id=${userId}`);
+            if (!res.ok) return { count: 0, latest_id: 0 };
             return await res.json();
         } catch { return { count: 0, latest_id: 0 }; }
     }
@@ -150,7 +151,7 @@
         showProgressBar();
         updateProgressBar(0, 'Indexing transactions…');
 
-        const { userId, companyId } = getUserInfo();
+        const { companyId, userId } = getUserInfo();
         if (!companyId) { isBuilding = false; hideProgressBar(); return; }
 
         try {
@@ -168,7 +169,7 @@
             updateProgressBar(5, `Indexing 0 / ${total} transactions…`);
 
             while (true) {
-                const res = await fetch(`/api/transactions?company_id=${companyId}&user_id=${userId}&limit=${PAGE}&offset=${offset}&sort=timestamp&order=ASC`);
+                const res = await fetch(`/api/transactions?company_id=${companyId}&requester_id=${userId}&limit=${PAGE}&offset=${offset}&sort=timestamp&order=ASC`);
                 const data = await res.json();
                 const batch = data.eintraege || [];
                 if (batch.length === 0) break;
@@ -271,23 +272,138 @@
         };
     }
 
+    // ── Incremental sync (fetch only new items) ─────────────────────────
+    async function incrementalSync(localMeta, remoteStatus) {
+        if (isBuilding) return;
+        isBuilding = true;
+        
+        const { companyId, userId } = getUserInfo();
+        const startId = localMeta.latest_id || 0;
+        let fetched = 0;
+        const PAGE = 500;
+        let offset = 0;
+
+        console.log(`[IndexManager] Incremental sync starting from ID > ${startId}`);
+        showProgressBar();
+        updateProgressBar(10, `Checking for new data…`);
+
+        try {
+            while (true) {
+                const res = await fetch(`/api/transactions?company_id=${companyId}&requester_id=${userId}&id_gt=${startId}&limit=${PAGE}&offset=${offset}&sort=id&order=ASC`);
+                const data = await res.json();
+                const batch = data.eintraege || [];
+                if (batch.length === 0) break;
+
+                await writeBatch(batch);
+                fetched += batch.length;
+                updateProgressBar(50, `Syncing new items: ${fetched}…`);
+
+                if (batch.length < PAGE) break;
+                offset += PAGE;
+            }
+
+            if (fetched > 0) {
+                updateProgressBar(90, 'Updating aggregations…');
+                await rebuildAggregations();
+                // Update meta
+                await idbPut(STORE_META, { 
+                    key: 'indexInfo', 
+                    count: remoteStatus.count, 
+                    latest_id: remoteStatus.latest_id, 
+                    builtAt: Date.now() 
+                });
+                console.log(`[IndexManager] Incremental sync complete: +${fetched} items`);
+            }
+
+            // After fetching new ones, check if we still have a count mismatch (indicates deletions)
+            if (remoteStatus.count !== (localMeta.count + fetched)) {
+                console.log('[IndexManager] Count mismatch detected after sync. Checking for deleted items...');
+                await syncDeletions();
+            }
+
+            updateProgressBar(100, `Sync complete`);
+            setTimeout(() => hideProgressBar(), 800);
+        } catch (err) {
+            console.error('[IndexManager] Incremental sync failed:', err);
+            await buildFullIndex(); // Fallback
+        } finally {
+            isBuilding = false;
+        }
+    }
+
+    // ── Deletion sync (remove local items no longer on server) ──────────
+    async function syncDeletions() {
+        const { companyId, userId } = getUserInfo();
+        if (!companyId) return;
+
+        try {
+            const res = await fetch(`/api/transactions/ids?company_id=${companyId}&requester_id=${userId}`);
+            const data = await res.json();
+            const serverIds = new Set(data.ids || []);
+            
+            const localTransactions = await idbGetAll(STORE_TX);
+            let deletedCount = 0;
+
+            for (const t of localTransactions) {
+                if (!serverIds.has(t.id)) {
+                    await idbDelete(STORE_TX, t.id);
+                    deletedCount++;
+                }
+            }
+
+            if (deletedCount > 0) {
+                console.log(`[IndexManager] Cleaned up ${deletedCount} deleted transactions locally.`);
+                await rebuildAggregations();
+            }
+
+            // ALWAYS update meta with fresh server status after a deletion sync
+            // This ensures latest_id is corrected if the "newest" item was deleted.
+            const freshStatus = await fetchIndexStatus();
+            await idbPut(STORE_META, { 
+                key: 'indexInfo', 
+                count: freshStatus.count, 
+                latest_id: freshStatus.latest_id, 
+                builtAt: Date.now() 
+            });
+        } catch (err) {
+            console.error('[IndexManager] Deletion sync failed:', err);
+        }
+    }
+
     // ── Public: ensure index is ready ───────────────────────────────────
     async function ensureIndex() {
         await openDB();
         const meta = await idbGet(STORE_META, 'indexInfo');
 
         if (!meta || !meta.builtAt) {
-            // No index → full build
             console.log('[IndexManager] No index found, building…');
             await buildFullIndex();
             return;
         }
 
-        // Check freshness against server
         const status = await fetchIndexStatus();
-        if (status.count !== meta.count || status.latest_id !== meta.latest_id) {
-            console.log(`[IndexManager] Index stale (local: ${meta.count}, server: ${status.count}), rebuilding…`);
-            await buildFullIndex();
+        
+        // Smarter Sync Logic
+        const isStale = String(status.latest_id) !== String(meta.latest_id || 0);
+        const hasCountMismatch = status.count !== meta.count;
+
+        if (isStale || hasCountMismatch) {
+            console.log(`[IndexManager] Index mismatch detected (IDs: ${meta.latest_id} vs ${status.latest_id}, Count: ${meta.count} vs ${status.count})`);
+            
+            if (status.latest_id > (meta.latest_id || 0)) {
+                // Typical case: New items added (maybe some deleted too)
+                await incrementalSync(meta, status);
+            } else {
+                // Latest ID is smaller or same, but count differs? Likely deletions of newest items.
+                await syncDeletions();
+                
+                // Final check: if after syncDeletions we still have a mismatch (rare, e.g. server reset)
+                const postSyncStatus = await fetchIndexStatus();
+                if (String(postSyncStatus.latest_id) !== String(status.latest_id) || postSyncStatus.count !== status.count) {
+                    console.warn('[IndexManager] Index still inconsistent after sync, forcing full rebuild.');
+                    await buildFullIndex();
+                }
+            }
         } else {
             console.log(`[IndexManager] Index up-to-date (${meta.count} transactions)`);
         }

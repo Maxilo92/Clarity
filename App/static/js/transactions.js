@@ -66,15 +66,80 @@
             if (isLoading || (!hasMore && append)) return;
             isLoading = true;
             if (!append) { currentOffset = 0; hasMore = true; if (tableEl) tableEl.classList.add('is-loading'); }
+            
+            // If we are appending and using local IndexManager data, just take the next slice
+            if (append && window.IndexManager && allEntries.length > currentOffset) {
+                const nextBatch = allEntries.slice(currentOffset, currentOffset + PAGE_SIZE);
+                renderTable(nextBatch, true);
+                currentOffset += nextBatch.length;
+                hasMore = allEntries.length > currentOffset;
+                isLoading = false;
+                return;
+            }
+
+            // Try IndexManager first for fast local filtering
+            if (window.IndexManager && !append) {
+                window.IndexManager.getAllTransactions().then(entries => {
+                    let filtered = entries;
+                    
+                    if (currentCategoryFilter !== 'all') {
+                        filtered = filtered.filter(t => t.kategorie === currentCategoryFilter);
+                    }
+                    if (currentSearchQuery) {
+                        const q = currentSearchQuery.toLowerCase();
+                        filtered = filtered.filter(t => 
+                            (t.name && t.name.toLowerCase().includes(q)) ||
+                            (t.sender && t.sender.toLowerCase().includes(q)) ||
+                            (t.empfaenger && t.empfaenger.toLowerCase().includes(q)) ||
+                            (t.beschreibung && t.beschreibung.toLowerCase().includes(q))
+                        );
+                    }
+                    if (currentDateFilter) {
+                        filtered = filtered.filter(t => t.timestamp.startsWith(currentDateFilter));
+                    }
+                    if (currentIdFilter) {
+                        filtered = filtered.filter(t => String(t.id).includes(currentIdFilter));
+                    }
+
+                    // Sort
+                    filtered.sort((a, b) => {
+                        let valA = a[currentSortColumn];
+                        let valB = b[currentSortColumn];
+                        if (currentSortColumn === 'wert') { valA = parseFloat(valA); valB = parseFloat(valB); }
+                        if (currentSortOrder === 'DESC') return valA < valB ? 1 : -1;
+                        return valA > valB ? 1 : -1;
+                    });
+
+                    allEntries = filtered;
+                    if (tableBody) tableBody.innerHTML = '';
+                    // Limit initial view but allow scroll to load more
+                    const initialBatch = allEntries.slice(0, PAGE_SIZE);
+                    renderTable(initialBatch, false);
+                    isLoading = false;
+                    if (tableEl) tableEl.classList.remove('is-loading');
+                    updateHeaderTags();
+                    hasMore = allEntries.length > PAGE_SIZE;
+                    currentOffset = initialBatch.length;
+                }).catch(err => {
+                    console.warn("[Transactions] IndexManager failed, falling back to API:", err);
+                    fetchFromAPI(append);
+                });
+            } else {
+                fetchFromAPI(append);
+            }
+        }
+
+        function fetchFromAPI(append) {
             const userStr = localStorage.getItem('clarityUser');
-            let userIdQuery = ''; let companyIdQuery = '';
-            if (userStr) { try { const user = JSON.parse(userStr); if (user.id) userIdQuery = `&user_id=${user.id}`; if (user.company_id) companyIdQuery = `&company_id=${user.company_id}`; } catch(e) {} }
-            let url = `/api/transactions?limit=${PAGE_SIZE}&offset=${currentOffset}${userIdQuery}${companyIdQuery}`;
+            let companyIdQuery = '';
+            if (userStr) { try { const user = JSON.parse(userStr); if (user.company_id) companyIdQuery = `&company_id=${user.company_id}`; } catch(e) {} }
+            let url = `/api/transactions?limit=${PAGE_SIZE}&offset=${currentOffset}${companyIdQuery}`;
             if (currentCategoryFilter !== 'all') url += `&category=${encodeURIComponent(currentCategoryFilter)}`;
             if (currentSearchQuery) url += `&search=${encodeURIComponent(currentSearchQuery)}`;
             if (currentDateFilter) url += `&date=${encodeURIComponent(currentDateFilter)}`;
             if (currentIdFilter) url += `&id=${encodeURIComponent(currentIdFilter)}`;
             url += `&sort=${currentSortColumn}&order=${currentSortOrder}`;
+            
             fetch(url).then(res => res.json()).then(data => {
                 const newEntries = data.eintraege || [];
                 if (!append) { allEntries = newEntries; if (tableBody) tableBody.innerHTML = ''; } else { allEntries = allEntries.concat(newEntries); }
@@ -221,20 +286,28 @@
         btnAdd.onclick = () => { if (form) form.reset(); delete form.dataset.editId; if (btnDeleteTransaction) btnDeleteTransaction.style.display = 'none'; document.getElementById('tDate').value = new Date().toISOString().split('T')[0]; modal.style.display = 'flex'; };
         if (btnCancel) btnCancel.onclick = () => modal.style.display = 'none';
 
-        loadTransactions();
-        document.addEventListener('dataUpdated', () => { loadTransactions(); });
-
-        // Pick up ?search= from URL (e.g. coming from Insights subscription click)
+        // Pick up ?search= or ?category= from URL BEFORE first load
         const urlParams = new URLSearchParams(window.location.search);
         const urlSearch = urlParams.get('search');
-        if (urlSearch) {
-            currentSearchQuery = urlSearch;
-            if (searchInput) searchInput.value = urlSearch;
+        const urlCategory = urlParams.get('category');
+        
+        if (urlSearch || urlCategory) {
+            if (urlSearch) {
+                currentSearchQuery = urlSearch;
+                if (searchInput) searchInput.value = urlSearch;
+            }
+            if (urlCategory) {
+                currentCategoryFilter = urlCategory;
+                // We dispatch the event, but we also need to ensure the local UI state reflects this
+                document.dispatchEvent(new CustomEvent('categoryChanged', { detail: { category: urlCategory } }));
+            }
             syncSearchActiveClass();
-            loadTransactions(false);
-            // Clean URL so a reload doesn't re-apply the filter
+            // We don't call loadTransactions(false) here yet, we let the main call below handle it with the updated filters
             window.history.replaceState({}, '', window.location.pathname);
         }
+
+        loadTransactions();
+        document.addEventListener('dataUpdated', () => { loadTransactions(); });
 
         document.addEventListener('forceFilter', (e) => {
             const { category, date, search, id } = e.detail;

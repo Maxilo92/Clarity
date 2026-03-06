@@ -12,16 +12,36 @@ const DB_PATH = path.join(APP_DIR, 'db', 'system.db');
 
 const sysDb = new sqlite3.Database(DB_PATH);
 
+// Initialize system tables
+sysDb.serialize(() => {
+    sysDb.run(`CREATE TABLE IF NOT EXISTS companies (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, domain TEXT UNIQUE NOT NULL)`);
+    sysDb.run(`ALTER TABLE companies ADD COLUMN context TEXT`, (err) => {});
+    sysDb.run(`CREATE TABLE IF NOT EXISTS user_index (email TEXT PRIMARY KEY, company_id INTEGER, FOREIGN KEY (company_id) REFERENCES companies(id))`);
+});
+
 function getCompanyDb(companyId) {
     if (!companyId || isNaN(companyId)) throw new Error("Valid Company ID required.");
     const dbPath = path.join(APP_DIR, 'db', `company_${companyId}.db`);
     const cDb = new sqlite3.Database(dbPath);
+    // Ensure budget column exists
+    cDb.run(`ALTER TABLE categories ADD COLUMN budget REAL DEFAULT 0`, (err) => { 
+        if (err && !err.message.includes('duplicate column name')) {
+            // Only log if it's NOT a "column already exists" error
+            // Note: SQLite error message for duplicate column varies, but usually contains 'duplicate'
+        }
+    });
+
     cDb.serialize(() => {
-        cDb.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT DEFAULT 'user')`);
+        cDb.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT DEFAULT 'user', must_change_password INTEGER DEFAULT 0)`);
+        cDb.run(`ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0`, (err) => { /* ignore */ });
         cDb.run(`CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY, name TEXT, kategorie TEXT, wert REAL, timestamp TEXT, sender TEXT, empfaenger TEXT, user_id INTEGER)`);
         cDb.run(`CREATE TABLE IF NOT EXISTS invites (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL, used BOOLEAN DEFAULT 0, expires_at TEXT)`);
         cDb.run(`CREATE TABLE IF NOT EXISTS user_settings (user_id INTEGER PRIMARY KEY, nickname TEXT, theme TEXT DEFAULT 'light', notifications_enabled BOOLEAN DEFAULT 1, FOREIGN KEY (user_id) REFERENCES users(id))`);
-        cDb.run(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, color TEXT DEFAULT '#6f42c1', icon TEXT DEFAULT 'tag', is_default BOOLEAN DEFAULT 0)`);
+        cDb.run(`ALTER TABLE user_settings ADD COLUMN ai_tone TEXT DEFAULT 'balanced'`, (err) => {});
+        cDb.run(`ALTER TABLE user_settings ADD COLUMN currency TEXT DEFAULT 'EUR'`, (err) => {});
+        cDb.run(`ALTER TABLE user_settings ADD COLUMN language TEXT DEFAULT 'de'`, (err) => {});
+        cDb.run(`CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, color TEXT DEFAULT '#6f42c1', icon TEXT DEFAULT 'tag', is_default BOOLEAN DEFAULT 0, budget REAL DEFAULT 0)`);
+        cDb.run(`CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action TEXT, details TEXT, entity_id TEXT, entity_type TEXT, timestamp TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))`);
         // Seed default categories if table is empty
         cDb.get("SELECT COUNT(*) as cnt FROM categories", (err, row) => {
             if (!err && row && row.cnt === 0) {
@@ -53,6 +73,34 @@ app.use('/static',    express.static(path.join(APP_DIR, 'static')));
 app.use('/assets',    express.static(path.join(APP_DIR, 'assets')));
 
 const APP_VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version;
+
+// --- RBAC Middleware ---
+const checkRole = (requiredRole) => {
+    return (req, res, next) => {
+        const companyId = req.query.company_id || req.body.company_id;
+        const requesterId = req.query.requester_id || req.body.requester_id;
+
+        if (!companyId || !requesterId) {
+            return res.status(401).json({ error: "Unauthorized", message: "Session invalid or missing permissions (Requester ID required)." });
+        }
+
+        try {
+            const cDb = getCompanyDb(companyId);
+            cDb.get("SELECT role FROM users WHERE id = ?", [requesterId], (err, user) => {
+                if (err || !user) return res.status(401).json({ error: "Unauthorized", message: "User not found." });
+                
+                // Admin bypasses all checks; otherwise check exact match
+                if (user.role === 'admin' || user.role === requiredRole) return next();
+                
+                return res.status(403).json({ error: "Forbidden", message: `Access denied. ${requiredRole.toUpperCase()} privileges required.` });
+            });
+        } catch (e) {
+            res.status(500).json({ error: "Security Error", message: e.message });
+        }
+    };
+};
+
+const isAdmin = checkRole('admin');
 
 // Helper to serve HTML with injected version
 function sendTemplate(res, fileName) {
@@ -88,34 +136,75 @@ app.get('/templates/:page.html', (req, res) => {
 
 let fetchFn = globalThis.fetch || require('node-fetch');
 
-async function getDatabaseSummary(companyId, userId) {
+const dbRun = (db, sql, params = []) => new Promise((res, rej) => db.run(sql, params, (err) => err ? rej(err) : res()));
+const dbQuery = (db, sql, params = []) => new Promise((res, rej) => db.get(sql, params, (err, row) => err ? rej(err) : res(row)));
+
+// --- Currency Conversion (Q4 Roadmap) ---
+let cachedRates = { rates: { "EUR": 1, "USD": 1.08, "GBP": 0.85 }, lastFetch: 0 };
+async function getExchangeRates() {
+    const now = Date.now();
+    if (now - cachedRates.lastFetch < 3600000) return cachedRates.rates; // 1h cache
+    try {
+        const res = await fetchFn("https://api.frankfurter.app/latest?from=EUR");
+        if (res.ok) {
+            const data = await res.json();
+            cachedRates = { rates: { ...data.rates, "EUR": 1 }, lastFetch: now };
+            console.log("[Currency] Rates updated from frankfurter.app");
+        }
+    } catch (e) { console.warn("[Currency] Failed to fetch rates, using fallback.", e.message); }
+    return cachedRates.rates;
+}
+
+async function convertCurrency(amount, toCurrency) {
+    if (!toCurrency || toCurrency === "EUR") return amount;
+    const rates = await getExchangeRates();
+    const rate = rates[toCurrency] || 1;
+    return amount * rate;
+}
+
+async function logAudit(companyId, userId, action, details, entityId = null, entityType = null) {
+    try {
+        const cDb = getCompanyDb(companyId);
+        await dbRun(cDb, "INSERT INTO audit_log (user_id, action, details, entity_id, entity_type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+            [userId, action, details, entityId ? entityId.toString() : null, entityType, new Date().toISOString()]);
+    } catch(e) { console.error("[AuditLog] Error logging action:", e.message); }
+}
+
+async function getDatabaseSummary(companyId, userId, targetCurrency = "EUR") {
     if (!companyId) return "No company context available.";
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
         try {
             const cDb = getCompanyDb(companyId);
             
-            // Get recent transactions
-            cDb.all("SELECT * FROM transactions WHERE user_id = ? ORDER BY timestamp DESC LIMIT 15", [userId], (err, rows) => {
+            // Get recent transactions (Company-wide)
+            cDb.all("SELECT * FROM transactions ORDER BY timestamp DESC LIMIT 15", [], async (err, rows) => {
                 if (err) return resolve("Error accessing database context.");
                 
                 const todayStr = new Date().toISOString().split('T')[0];
-                let summary = `### DATABASE CONTEXT (TODAY IS ${todayStr}) ###\n`;
+                let summary = `### DATABASE CONTEXT (TODAY IS ${todayStr}, CURRENCY IS ${targetCurrency}) ###\n`;
                 
                 if (rows && rows.length > 0) {
-                    summary += "Recent Transactions:\n";
-                    rows.forEach(r => summary += `- [${r.timestamp.split('T')[0]}] ${r.name}: ${r.wert}€ (${r.kategorie})\n`);
+                    summary += "Recent Transactions (ID: [Date] Name: Amount):\n";
+                    for (const r of rows) {
+                        const converted = await convertCurrency(r.wert, targetCurrency);
+                        summary += `- ID ${r.id}: [${r.timestamp.split('T')[0]}] ${r.name}: ${converted.toFixed(2)}${targetCurrency} (${r.kategorie})\n`;
+                    }
                 } else {
                     summary += "No transaction history found.\n";
                 }
 
-                // Get category stats
-                cDb.all("SELECT kategorie, SUM(wert) as total FROM transactions WHERE user_id = ? GROUP BY kategorie ORDER BY total DESC", [userId], (err, stats) => {
+                // Get category stats (Company-wide)
+                cDb.all("SELECT kategorie, SUM(wert) as total FROM transactions GROUP BY kategorie ORDER BY total DESC", [], async (err, stats) => {
                     if (!err && stats && stats.length > 0) {
-                        summary += "\n### SPENDING BY CATEGORY (All Time) ###\n";
-                        stats.forEach(s => summary += `- ${s.kategorie}: ${s.total.toFixed(2)}€\n`);
+                        summary += `\n### SPENDING BY CATEGORY (All Time in ${targetCurrency}) ###\n`;
+                        for (const s of stats) {
+                            const converted = await convertCurrency(s.total, targetCurrency);
+                            summary += `- ${s.kategorie}: ${converted.toFixed(2)}${targetCurrency}\n`;
+                        }
                         
-                        const totalSpending = stats.reduce((acc, s) => acc + s.total, 0);
-                        summary += `\nTOTAL SPENDING: ${totalSpending.toFixed(2)}€\n`;
+                        const totalRaw = stats.reduce((acc, s) => acc + s.total, 0);
+                        const totalConv = await convertCurrency(totalRaw, targetCurrency);
+                        summary += `\nTOTAL SPENDING: ${totalConv.toFixed(2)}${targetCurrency}\n`;
                     }
                     resolve(summary);
                 });
@@ -131,6 +220,24 @@ app.get('/api/companies/domain', (req, res) => {
     if (!name) return res.status(400).json({ error: "Company name required" });
     const domain = name.toLowerCase().replace(/\s+/g, '-') + ".com";
     res.json({ domain });
+});
+
+app.get('/api/companies/context', isAdmin, (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    sysDb.get("SELECT context FROM companies WHERE id = ?", [company_id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ context: row?.context || "" });
+    });
+});
+
+app.post('/api/companies/context', isAdmin, (req, res) => {
+    const { company_id, context, requester_id } = req.body;
+    sysDb.run("UPDATE companies SET context = ? WHERE id = ?", [context, company_id], async function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        await logAudit(company_id, requester_id, 'UPDATE_COMPANY_CONTEXT', 'Updated organization profile / AI context');
+        res.json({ success: true });
+    });
 });
 
 app.post('/api/onboarding/admin', async (req, res) => {
@@ -189,7 +296,8 @@ app.post('/api/users/login', (req, res) => {
         cDb.get("SELECT * FROM users WHERE email = ?", [email], async (err, row) => {
             if (err || !row || !(await bcrypt.compare(password, row.password))) return res.status(401).json({ error: "Invalid credentials." });
             sysDb.get("SELECT name FROM companies WHERE id = ?", [index.company_id], (err, comp) => {
-                res.json({ success: true, user: { ...row, company_id: index.company_id, company_name: comp ? comp.name : "Organization" } });
+                const { password, ...safeUser } = row;
+                res.json({ success: true, user: { ...safeUser, company_id: index.company_id, company_name: comp ? comp.name : "Organization" } });
             });
         });
     });
@@ -197,7 +305,7 @@ app.post('/api/users/login', (req, res) => {
 
 // --- Invites & Management ---
 
-app.post('/api/invites', (req, res) => {
+app.post('/api/invites', isAdmin, (req, res) => {
     const { company_id, expires_in_hours } = req.body;
     const cDb = getCompanyDb(company_id);
     const code = crypto.randomBytes(4).toString('hex').toUpperCase();
@@ -207,13 +315,13 @@ app.post('/api/invites', (req, res) => {
     });
 });
 
-app.get('/api/invites', (req, res) => {
+app.get('/api/invites', isAdmin, (req, res) => {
     const { company_id } = req.query;
     const cDb = getCompanyDb(company_id);
     cDb.all("SELECT * FROM invites ORDER BY id DESC", [], (err, rows) => res.json({ invites: rows || [] }));
 });
 
-app.post('/api/invites/cancel', (req, res) => {
+app.post('/api/invites/cancel', isAdmin, (req, res) => {
     const { code, company_id } = req.body;
     const cDb = getCompanyDb(company_id);
     cDb.run("UPDATE invites SET used = 1 WHERE code = ?", [code], () => res.json({ success: true }));
@@ -244,16 +352,54 @@ app.get('/api/invites/validate', (req, res) => {
 
 // --- User Management ---
 
-app.get('/api/users', (req, res) => {
-    const { company_id } = req.query;
+app.post('/api/users/reset-password', async (req, res) => {
+    const { user_id, company_id } = req.body;
+    if (!user_id || !company_id) return res.status(400).json({ error: "Missing parameters." });
+    
+    const tempPassword = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 characters
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    
+    const cDb = getCompanyDb(company_id);
+    cDb.run("UPDATE users SET password = ?, must_change_password = 1 WHERE id = ?", [hashedPassword, user_id], (err) => {
+        if (err) return res.status(500).json({ error: "Failed to reset password." });
+        res.json({ success: true, temp_password: tempPassword });
+    });
+});
+
+app.post('/api/users/change-password', async (req, res) => {
+    const { user_id, company_id, new_password } = req.body;
+    if (!user_id || !company_id || !new_password) return res.status(400).json({ error: "Missing parameters." });
+    
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    const cDb = getCompanyDb(company_id);
+    cDb.run("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?", [hashedPassword, user_id], (err) => {
+        if (err) return res.status(500).json({ error: "Failed to update password." });
+        res.json({ success: true });
+    });
+});
+
+app.get('/api/users', isAdmin, (req, res) => {
+    const { company_id, search, role, limit = 50, offset = 0 } = req.query;
     if (!company_id) return res.status(400).json({ error: "Required." });
     try {
         const cDb = getCompanyDb(company_id);
-        cDb.all("SELECT id, full_name, email, role FROM users", [], (err, rows) => res.json({ users: rows || [] }));
+        let sql = "SELECT id, full_name, email, role FROM users WHERE 1=1";
+        let params = [];
+        if (search) {
+            sql += " AND (full_name LIKE ? OR email LIKE ?)";
+            params.push(`%${search}%`, `%${search}%`);
+        }
+        if (role && role !== 'all') {
+            sql += " AND role = ?";
+            params.push(role);
+        }
+        sql += " LIMIT ? OFFSET ?";
+        params.push(parseInt(limit), parseInt(offset));
+        cDb.all(sql, params, (err, rows) => res.json({ users: rows || [] }));
     } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-app.put('/api/users/:id', (req, res) => {
+app.put('/api/users/:id', isAdmin, (req, res) => {
     const { company_id, role } = req.body;
     const cDb = getCompanyDb(company_id);
     const userId = req.params.id;
@@ -265,7 +411,7 @@ app.put('/api/users/:id', (req, res) => {
     } else { cDb.run("UPDATE users SET role = ? WHERE id = ?", [role, userId], () => res.json({ success: true })); }
 });
 
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', isAdmin, (req, res) => {
     const { company_id } = req.query;
     const cDb = getCompanyDb(company_id);
     const userId = req.params.id;
@@ -305,18 +451,34 @@ app.get('/api/config', (req, res) => {
 });
 
 app.post('/api/config', (req, res) => {
-    const { user_id, company_id, nickname } = req.body;
+    const { user_id, company_id, nickname, theme, ai_tone, currency, language } = req.body;
+    if (!user_id || !company_id) return res.status(400).json({ error: "Missing IDs" });
     const cDb = getCompanyDb(company_id);
-    cDb.run("INSERT INTO user_settings (user_id, nickname) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET nickname=excluded.nickname", [user_id, nickname], () => res.json({ success: true }));
+    const sql = `
+        INSERT INTO user_settings (user_id, nickname, theme, ai_tone, currency, language) 
+        VALUES (?, ?, ?, ?, ?, ?) 
+        ON CONFLICT(user_id) DO UPDATE SET 
+            nickname=COALESCE(?, nickname), 
+            theme=COALESCE(?, theme),
+            ai_tone=COALESCE(?, ai_tone),
+            currency=COALESCE(?, currency),
+            language=COALESCE(?, language)
+    `;
+    const params = [user_id, nickname, theme, ai_tone, currency, language, nickname, theme, ai_tone, currency, language];
+    cDb.run(sql, params, (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
 });
 
 app.get("/api/transactions", (req, res) => {
-    const { company_id, user_id, id, category, search, date, sort="timestamp", order="DESC", limit=25, offset=0 } = req.query;
+    const { company_id, id, id_gt, category, search, date, sort="timestamp", order="DESC", limit=25, offset=0 } = req.query;
     if (!company_id) return res.status(400).json({ error: "company_id required" });
     try {
         const cDb = getCompanyDb(company_id);
-        let query = "SELECT * FROM transactions", where = ["user_id = ?"], params = [user_id];
+        let query = "SELECT * FROM transactions", where = [], params = [];
         if (id) { where.push("id = ?"); params.push(id); }
+        if (id_gt) { where.push("id > ?"); params.push(parseFloat(id_gt)); }
         if (category && category !== "all") { where.push("kategorie = ?"); params.push(category); }
         if (date) { where.push("timestamp LIKE ?"); params.push(`${date}%`); }
         if (search) { where.push("(name LIKE ? OR sender LIKE ? OR empfaenger LIKE ? OR kategorie LIKE ? OR CAST(wert AS TEXT) LIKE ?)"); const p = `%${search}%`; params.push(p,p,p,p,p); }
@@ -330,37 +492,128 @@ app.get("/api/transactions", (req, res) => {
 });
 
 // Index status: count + latest timestamp (used by client IndexManager to check freshness)
-app.get("/api/transactions/index-status", (req, res) => {
-    const { company_id, user_id } = req.query;
-    if (!company_id) return res.status(400).json({ error: "company_id required" });
+app.get('/api/transactions/index-status', isAdmin, (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "Missing company_id" });
     try {
         const cDb = getCompanyDb(company_id);
-        cDb.get("SELECT COUNT(*) as count, MAX(id) as latest_id FROM transactions WHERE user_id = ?", [user_id], (err, row) => {
+        cDb.get("SELECT COUNT(*) as count, MAX(id) as latest_id FROM transactions", (err, row) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ count: row?.count || 0, latest_id: row?.latest_id || 0 });
+            res.json({ count: row.count || 0, latest_id: row.latest_id || null });
         });
     } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-app.post('/api/transactions', (req, res) => {
+// Returns only IDs for efficient deletion-sync
+app.get('/api/transactions/ids', isAdmin, (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "Missing company_id" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.all("SELECT id FROM transactions", (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ ids: (rows || []).map(r => r.id) });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/transactions/consistency-scan', isAdmin, (req, res) => {
+    const { company_id } = req.query;
+    if (!company_id) return res.status(400).json({ error: "Missing company_id" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        const issues = [];
+
+        // Find transactions with 0 amount
+        cDb.all("SELECT id, name FROM transactions WHERE wert = 0 OR wert IS NULL", [], (err, zeroRows) => {
+            if (!err && zeroRows) {
+                zeroRows.forEach(r => issues.push({ id: r.id, type: 'zero_amount', message: `Transaction '${r.name}' has 0 or null amount.` }));
+            }
+
+            // Find transactions with missing category
+            cDb.all("SELECT id, name FROM transactions WHERE kategorie IS NULL OR kategorie = ''", [], (err, catRows) => {
+                if (!err && catRows) {
+                    catRows.forEach(r => issues.push({ id: r.id, type: 'missing_category', message: `Transaction '${r.name}' has no category.` }));
+                }
+
+                // Find future transactions
+                const now = new Date().toISOString();
+                cDb.all("SELECT id, name, timestamp FROM transactions WHERE timestamp > ?", [now], (err, futRows) => {
+                    if (!err && futRows) {
+                        futRows.forEach(r => issues.push({ id: r.id, type: 'future_date', message: `Transaction '${r.name}' is in the future (${r.timestamp}).` }));
+                    }
+
+                    res.json({ issues, total_issues: issues.length });
+                });
+            });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/transactions/chunk', (req, res) => {
     const { company_id, user_id, name, kategorie, wert, sender, empfaenger, timestamp, beschreibung } = req.body;
     if (!company_id) return res.status(400).json({ error: "Required." });
     const cDb = getCompanyDb(company_id);
-    cDb.run("INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?,?,?,?,?,?,?,?,?)",
-        [Date.now() + Math.random(), name || "Unbenannt", kategorie || "Sonstiges", parseFloat(wert || 0), timestamp || new Date().toISOString(), sender || "", empfaenger || "", user_id, beschreibung || ""],
-        () => res.json({ success: true }));
+    const id = Date.now() + Math.random();
+    cDb.run("INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [id, name || "Unbenannt", kategorie || "Sonstiges", parseFloat(wert || 0), timestamp || new Date().toISOString(), sender || "", empfaenger || "", user_id, beschreibung || ""],
+        async (err) => {
+            if (err) {
+                console.error("[Transactions API] Insert Error:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+            await logAudit(company_id, user_id, 'ADD_TRANSACTION', `Added transaction '${name}'`, id, 'transaction');
+            res.json({ success: true });
+        });
 });
 
-app.put('/api/transactions/:id', (req, res) => {
-    const { company_id, name, kategorie, wert, sender, empfaenger, timestamp, beschreibung } = req.body;
+app.put('/api/transactions/:id', async (req, res) => {
+    const { company_id, name, kategorie, wert, sender, empfaenger, timestamp, beschreibung, user_id } = req.body;
     const cDb = getCompanyDb(company_id);
-    cDb.run("UPDATE transactions SET name = ?, kategorie = ?, wert = ?, sender = ?, empfaenger = ?, timestamp = ?, beschreibung = ? WHERE id = ?", [name, kategorie, parseFloat(wert), sender, empfaenger, timestamp, beschreibung || "", req.params.id], () => res.json({ success: true }));
+    cDb.run("UPDATE transactions SET name = ?, kategorie = ?, wert = ?, sender = ?, empfaenger = ?, timestamp = ?, beschreibung = ? WHERE id = ?", [name, kategorie, parseFloat(wert), sender, empfaenger, timestamp, beschreibung || "", req.params.id], async (err) => {
+        if (!err) await logAudit(company_id, user_id, 'UPDATE_TRANSACTION', `Updated transaction '${name}'`, req.params.id, 'transaction');
+        res.json({ success: true });
+    });
 });
 
-app.delete('/api/transactions/:id', (req, res) => {
-    const { company_id } = req.query;
+app.delete('/api/transactions/:id', async (req, res) => {
+    const { company_id, user_id } = req.query;
     const cDb = getCompanyDb(company_id);
-    cDb.run("DELETE FROM transactions WHERE id = ?", req.params.id, () => res.json({ success: true }));
+    cDb.run("DELETE FROM transactions WHERE id = ?", req.params.id, async (err) => {
+        if (!err) await logAudit(company_id, user_id, 'DELETE_TRANSACTION', `Deleted transaction ID ${req.params.id}`, req.params.id, 'transaction');
+        res.json({ success: true });
+    });
+});
+
+// --- Audit Log API ---
+app.get('/api/audit-log', isAdmin, (req, res) => {
+    const { company_id, search, action, limit = 50, offset = 0 } = req.query;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        let sql = `
+            SELECT al.*, u.full_name as user_name 
+            FROM audit_log al
+            LEFT JOIN users u ON al.user_id = u.id
+            WHERE 1=1
+        `;
+        let params = [];
+        if (search) {
+            sql += " AND (al.details LIKE ? OR u.full_name LIKE ? OR al.entity_id LIKE ?)";
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+        if (action && action !== 'all') {
+            sql += " AND al.action = ?";
+            params.push(action);
+        }
+        sql += " ORDER BY al.timestamp DESC LIMIT ? OFFSET ?";
+        params.push(parseInt(limit), parseInt(offset));
+
+        cDb.all(sql, params, (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ audit_log: rows || [] });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
 // --- Categories API ---
@@ -376,39 +629,82 @@ app.get('/api/categories', (req, res) => {
     } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-app.post('/api/categories', (req, res) => {
-    const { company_id, name, color, icon } = req.body;
+app.post('/api/categories', isAdmin, (req, res) => {
+    const { company_id, name, color, icon, requester_id } = req.body;
     if (!company_id || !name || !name.trim()) return res.status(400).json({ error: "company_id and name required" });
     try {
         const cDb = getCompanyDb(company_id);
         cDb.run("INSERT INTO categories (name, color, icon, is_default) VALUES (?, ?, ?, 0)",
             [name.trim(), color || '#6f42c1', icon || 'tag'],
-            function(err) {
+            async function(err) {
                 if (err) {
                     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: "Category already exists" });
                     return res.status(500).json({ error: err.message });
                 }
-                res.json({ success: true, id: this.lastID });
+                const newId = this.lastID;
+                await logAudit(company_id, user_id, 'ADD_CATEGORY', `Created category '${name}'`, newId, 'category');
+                res.json({ success: true, id: newId });
             });
     } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-app.put('/api/categories/:id', (req, res) => {
-    const { company_id, name, color, icon } = req.body;
+app.put('/api/categories/:id', isAdmin, (req, res) => {
+    const { company_id, name, color, icon, requester_id } = req.body;
     if (!company_id) return res.status(400).json({ error: "company_id required" });
     try {
         const cDb = getCompanyDb(company_id);
         cDb.run("UPDATE categories SET name = ?, color = ?, icon = ? WHERE id = ? AND is_default = 0",
             [name.trim(), color || '#6f42c1', icon || 'tag', req.params.id],
-            function(err) {
+            async function(err) {
                 if (err) return res.status(500).json({ error: err.message });
                 if (this.changes === 0) return res.status(400).json({ error: "Cannot edit default categories" });
+                await logAudit(company_id, user_id, 'UPDATE_CATEGORY', `Updated category '${name}'`, req.params.id, 'category');
                 res.json({ success: true });
             });
     } catch(e) { res.status(400).json({ error: e.message }); }
 });
 
-app.delete('/api/categories/:id', (req, res) => {
+app.put('/api/categories/:id/budget', isAdmin, (req, res) => {
+    const { company_id, budget, requester_id } = req.body;
+    if (!company_id) return res.status(400).json({ error: "company_id required" });
+    try {
+        const cDb = getCompanyDb(company_id);
+        cDb.run("UPDATE categories SET budget = ? WHERE id = ?", [parseFloat(budget || 0), req.params.id], async function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            await logAudit(company_id, user_id, 'UPDATE_BUDGET', `Updated budget for category ID ${req.params.id} to ${budget}`, req.params.id, 'category');
+            res.json({ success: true });
+        });
+    } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/categories/stats', (req, res) => {
+    const { company_id, month } = req.query; // month as 'YYYY-MM'
+    if (!company_id || !month) return res.status(400).json({ error: "Missing parameters" });
+    console.log(`[Stats API] Fetching for Company: ${company_id}, Month: ${month}`);
+    try {
+        const cDb = getCompanyDb(company_id);
+        const sql = `
+            SELECT c.id, c.name, c.color, c.icon, COALESCE(c.budget, 0) as budget,
+                   COALESCE(ABS(SUM(CASE WHEN t.wert < 0 THEN t.wert ELSE 0 END)), 0) as spent
+            FROM categories c
+            LEFT JOIN transactions t ON c.name = t.kategorie 
+                 AND t.timestamp LIKE ?
+            GROUP BY c.id
+        `;
+        cDb.all(sql, [`${month}%`], (err, rows) => {
+            if (err) {
+                console.error("[Stats API] DB Error:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ stats: rows || [] });
+        });
+    } catch(e) { 
+        console.error("[Stats API] Catch Error:", e.message);
+        res.status(400).json({ error: e.message }); 
+    }
+});
+
+app.delete('/api/categories/:id', isAdmin, (req, res) => {
     const { company_id } = req.query;
     if (!company_id) return res.status(400).json({ error: "company_id required" });
     try {
@@ -465,6 +761,36 @@ function getAiTools(categoryNames) {
     {
         type: "function",
         function: {
+            name: "delete_transaction",
+            description: "Deletes an existing transaction from the database. You MUST provide the numerical 'id' found in the context (e.g. ID 123456789). NEVER create a new transaction to confirm a deletion.",
+            parameters: {
+                type: "object",
+                properties: {
+                    id: { type: "number", description: "The numerical ID of the transaction to delete (e.g. 1741195231000)." },
+                    name: { type: "string", description: "The name of the transaction (for confirmation)." }
+                    },
+                    required: ["id"]
+                    }
+                    }
+                    },
+                    {
+                    type: "function",
+                    function: {
+                    name: "suggest_category",
+                    description: "Suggests a category for a given transaction name based on historical usage.",
+                    parameters: {
+                    type: "object",
+                    properties: {
+                    name: { type: "string", description: "The transaction name (e.g. 'Rewe', 'Amazon')" }
+                    },
+                    required: ["name"]
+                    }
+                    }
+                    },
+                    {
+                    type: "function",
+
+        function: {
             name: "get_spending_analysis",
             description: "Analyzes spending habits, trends, and provides a summary of the user's financial status.",
             parameters: {
@@ -480,19 +806,26 @@ function getAiTools(categoryNames) {
 
 // --- Joule Chat API (Native Tool Use) ---
 
-const dbQuery = (db, sql, params = []) => new Promise((res, rej) => db.get(sql, params, (err, row) => err ? rej(err) : res(row)));
-const dbRun = (db, sql, params = []) => new Promise((res, rej) => db.run(sql, params, (err) => err ? rej(err) : res()));
-
 app.post('/api/chat', async (req, res) => {
-    const { company_id, user_id, messages } = req.body;
+    const { company_id, user_id, messages, stream = true } = req.body;
     if (!company_id || !user_id) return res.status(400).json({ error: "Missing IDs" });
     
     try {
         const cDb = getCompanyDb(company_id);
-        const summary = await getDatabaseSummary(company_id, user_id);
-        const userRow = await dbQuery(cDb, "SELECT users.full_name, user_settings.nickname FROM users LEFT JOIN user_settings ON users.id = user_settings.user_id WHERE users.id = ?", [user_id]);
+        const userRow = await dbQuery(cDb, "SELECT users.full_name, user_settings.* FROM users LEFT JOIN user_settings ON users.id = user_settings.user_id WHERE users.id = ?", [user_id]);
         
-        // Fetch dynamic categories for AI tools
+        const currency = userRow?.currency || "EUR";
+        const lang = userRow?.language || "de";
+        const tone = userRow?.ai_tone || "balanced";
+
+        const companyRow = await new Promise((resolve) => {
+            sysDb.get("SELECT name, context FROM companies WHERE id = ?", [company_id], (err, row) => resolve(err ? null : row));
+        });
+        const companyName = companyRow?.name || "The Organization";
+        const companyContext = companyRow?.context || "No specific organizational rules defined.";
+
+        const summary = await getDatabaseSummary(company_id, user_id, currency);
+        
         const categoryRows = await new Promise((resolve) => {
             cDb.all("SELECT name FROM categories ORDER BY is_default DESC, name ASC", (err, rows) => resolve(err ? [] : (rows || [])));
         });
@@ -506,14 +839,30 @@ app.post('/api/chat', async (req, res) => {
         const systemContent = `You are Clair, a senior financial advisor for "Clarity".
 You are proactive, professional, and precise. 
 User: ${nickname}
+Organization: ${companyName}
 TODAY'S DATE: ${nowStr}
 ${summary}
+
+### ORGANIZATION CONTEXT (Rules & Profile):
+${companyContext}
+
+### USER PREFERENCES:
+- CURRENCY: ${currency}
+- LANGUAGE: ${lang}
+- TONE: ${tone} (Adjust your response style accordingly)
 
 ### CORE MISSION:
 - Help the user manage their finances by adding transactions, analyzing trends, and answering questions.
 - Identify potential savings or unusual spending patterns.
 - Be proactive: if you see a trend, point it out.
 - **ATTACHMENTS:** If a message contains "[BEREITS IN DATENBANK]", this transaction ALREADY exists. Never say "I have saved/added" this specific transaction. Just use its data.
+
+### INTENT HANDLING (ROUTING):
+1. **Adding/Booking:** Use \`add_transaction\`. If the category is unclear, call \`suggest_category\` first or in parallel.
+2. **Analysis/Reports:** For "How was my month?" or "Show me a report", use \`get_spending_analysis\`.
+3. **Filtering/Searching:** For "Show me all Aldi purchases", use \`filter_dashboard\`.
+4. **Deleting:** Use \`delete_transaction\`. ALWAYS check if the ID provided in the context matches.
+5. **General Advice:** Use the transaction summary in your context to answer directly.
 
 ### LANGUAGE & TONE:
 - **QUALITY:** Use perfect German grammar and a natural, helpful tone. Avoid robotic or incomplete sentences.
@@ -522,7 +871,8 @@ ${summary}
 
 ### GUIDELINES:
 - Use tools to perform actions or fetch deeper data.
-- **AFTER USING A TOOL (NEW TRANSACTIONS ONLY):** You MUST explicitly tell the user what you just did in a natural way.
+- **ALWAYS SPEAK:** You MUST always provide a natural, conversational response to the user. Never output ONLY technical markers or tool calls.
+- **AFTER USING A TOOL:** Explicitly tell the user what you just did or are about to do in a natural way.
 - Expenses MUST be negative, Income MUST be positive.
 - If details for a transaction are missing, ASK for them instead of making them up.
 - **MARKERS:** Never repeat the technical markers (like FILTER_DASHBOARD) in your conversational text. Just use the tool or append it at the very end.
@@ -533,139 +883,363 @@ ${summary}
         if (sysIdx !== -1) finalMessages[sysIdx].content = systemContent;
         else finalMessages.unshift({ role: 'system', content: systemContent });
 
-        const groqCall = async (msgs, model = "llama-3.3-70b-versatile", useTools = true) => {
-            const body = { 
-                model: model, 
-                messages: msgs, 
-                temperature: 0.4,
-                max_tokens: 1024
-            };
-            if (useTools) {
-                body.tools = aiTools;
-                body.tool_choice = "auto";
-            }
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 25000);
-            try {
-                const response = await fetchFn("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY },
-                    body: JSON.stringify(body),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error?.message || "Groq API error");
-                return data;
-            } catch (err) {
-                clearTimeout(timeoutId);
-                throw err;
-            }
-        };
-
-        let aiResponse;
-        try {
-            console.log("[Groq] Calling primary model...");
-            aiResponse = await groqCall(finalMessages, "llama-3.3-70b-versatile");
-        } catch (e) {
-            console.warn("[Groq] primary model failed, trying fallback 8b...", e.message);
-            aiResponse = await groqCall(finalMessages, "llama-3.1-8b-instant");
-        }
-
-        if (!aiResponse.choices?.[0]) throw new Error("No choices in response");
-
-        let message = aiResponse.choices[0].message;
-        let toolMarkers = "";
-
-        if (message.tool_calls) {
-            console.log("[Groq] Tool calls detected:", message.tool_calls.length);
-            const toolResults = [];
-            for (const toolCall of message.tool_calls) {
-                try {
-                    const args = JSON.parse(toolCall.function.arguments);
-                    let result = { success: true };
-
-                    if (toolCall.function.name === "add_transaction") {
-                        const t = {
-                            name: args.name || args.item || "Unbenannt",
-                            kategorie: args.category || args.kategorie || "Sonstiges",
-                            wert: parseFloat(args.amount || args.wert || 0),
-                            timestamp: (args.date === "today" || !args.date) ? new Date().toISOString() : new Date(args.date).toISOString(),
-                            sender: args.sender || nickname,
-                            empfaenger: args.empfaenger || "Clarity",
-                            user_id: user_id,
-                            beschreibung: args.description || ""
-                        };
-                        await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?,?,?,?,?,?,?,?,?)",
-                            [Math.floor(Date.now() + Math.random()), t.name, t.kategorie, t.wert, t.timestamp, t.sender, t.empfaenger, t.user_id, t.beschreibung]);
-                        toolMarkers += `\nADD_TRANSACTION:${JSON.stringify(args)}`;
-                    } 
-                    else if (toolCall.function.name === "filter_dashboard") {
-                        toolMarkers += `\nQUERY:${JSON.stringify(args)}`;
-                        result = { success: true, action: "filter" };
-                    }
-                    else if (toolCall.function.name === "get_spending_analysis") {
-                        result = { summary: summary, note: "User spending is consistent." };
-                    }
-
-                    toolResults.push({ role: "tool", tool_call_id: toolCall.id, name: toolCall.function.name, content: JSON.stringify(result) });
-                } catch (e) { console.error("[Tool Exec Error]", e); }
-            }
-
-            finalMessages.push(message);
-            finalMessages.push(...toolResults);
-            try {
-                console.log("[Groq] Requesting conversational follow-up...");
-                const followUp = await groqCall(finalMessages, "llama-3.1-8b-instant", false);
-                if (followUp.choices?.[0]?.message?.content) message = followUp.choices[0].message;
-            } catch (e) { 
-                console.error("[Follow-up Error]", e); 
-                if (!message.content) message.content = "Ich habe die gewünschte Aktion durchgeführt.";
-            }
-        }
-
-        // --- MANUAL FALLBACK PARSING (If AI wrote markers in text instead of tool call) ---
-        const addMatch = message.content ? message.content.match(/ADD_TRANSACTION:(\{.*?\})/) : null;
-        const filterMatch = message.content ? message.content.match(/(QUERY|FILTER_DASHBOARD):(\{.*?\})/) : null;
-        const functionMatch = message.content ? message.content.match(/<function=(\w+)>\s*(\{[\s\S]*?\})/) : null;
-
-        if (addMatch && (!message.tool_calls || !message.tool_calls.some(tc => tc.function.name === 'add_transaction'))) {
-            try {
-                const args = JSON.parse(addMatch[1]);
-                await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?,?,?,?,?,?,?,?,?)",
-                    [Math.floor(Date.now() + Math.random()), args.name || "Unbenannt", args.category || "Sonstiges", parseFloat(args.amount || 0), new Date().toISOString(), nickname, "Clarity", user_id, args.description || ""]);
-                if (!toolMarkers.includes("ADD_TRANSACTION")) toolMarkers += `\nADD_TRANSACTION:${addMatch[1]}`;
-            } catch(e) {}
-        }
+        const groqHeaders = { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.GROQ_API_KEY };
         
-        if (filterMatch && !toolMarkers.includes("QUERY")) {
-            toolMarkers += `\nQUERY:${filterMatch[2]}`;
-        }
-
-        // Support for <function=name> {args} format
-        if (functionMatch && !toolMarkers.includes("QUERY") && !toolMarkers.includes("ADD_TRANSACTION")) {
-            const funcName = functionMatch[1];
-            const funcArgs = functionMatch[2];
-            if (funcName === "filter_dashboard") {
-                toolMarkers += `\nQUERY:${funcArgs}`;
-            } else if (funcName === "add_transaction") {
+        async function fetchWithFallback(models, payloadOptions) {
+            let lastErr = null;
+            for (const model of models) {
                 try {
-                    const args = JSON.parse(funcArgs);
-                    await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, sender, empfaenger, user_id, beschreibung) VALUES (?,?,?,?,?,?,?,?,?)",
-                        [Math.floor(Date.now() + Math.random()), args.name || "Unbenannt", args.category || "Sonstiges", parseFloat(args.amount || 0), new Date().toISOString(), nickname, "Clarity", user_id, args.description || ""]);
-                    toolMarkers += `\nADD_TRANSACTION:${funcArgs}`;
-                } catch(e) {}
+                    const response = await fetchFn("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: groqHeaders,
+                        body: JSON.stringify({ ...payloadOptions, model })
+                    });
+                    if (response.ok) return response;
+                    const errData = await response.json().catch(() => ({}));
+                    lastErr = new Error(errData.error?.message || `Groq HTTP ${response.status}`);
+                    console.warn(`[Fallback] Model ${model} failed, trying next...`, lastErr.message);
+                } catch (e) {
+                    lastErr = e;
+                    console.warn(`[Fallback] Model ${model} network error, trying next...`, e.message);
+                }
             }
+            throw lastErr || new Error("All fallback models failed.");
         }
 
-        if (!message.content) message.content = "Ich habe die gewünschte Aktion durchgeführt.";
-        if (toolMarkers) message.content += toolMarkers;
+        const primaryModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"];
+        const followUpModels = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"];
 
-        res.json({ choices: [{ message }] });
+        if (stream) {
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            const bodyOptions = { 
+                messages: finalMessages, 
+                temperature: 0.4,
+                max_tokens: 1024,
+                stream: true,
+                tools: aiTools,
+                tool_choice: "auto"
+            };
+
+            const response = await fetchWithFallback(primaryModels, bodyOptions);
+
+            let fullContent = "";
+            let toolCalls = [];
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            const sendSSE = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+
+            for await (const chunk of response.body) {
+                buffer += decoder.decode(chunk, { stream: true });
+                let lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep incomplete line
+
+                for (let line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                    
+                    const dataStr = trimmed.slice(6);
+                    if (dataStr === '[DONE]') continue;
+                    
+                    try {
+                        const json = JSON.parse(dataStr);
+                        const delta = json.choices[0]?.delta;
+                        if (!delta) continue;
+                        
+                        if (delta.content) {
+                            fullContent += delta.content;
+                            sendSSE({ content: delta.content });
+                        }
+                        
+                        if (delta.tool_calls) {
+                            for (const tc of delta.tool_calls) {
+                                if (!toolCalls[tc.index]) {
+                                    toolCalls[tc.index] = { id: tc.id, type: "function", function: { name: "", arguments: "" } };
+                                }
+                                if (tc.id) toolCalls[tc.index].id = tc.id;
+                                if (tc.type) toolCalls[tc.index].type = tc.type;
+                                if (tc.function?.name) toolCalls[tc.index].function.name += tc.function.name;
+                                if (tc.function?.arguments) toolCalls[tc.index].function.arguments += tc.function.arguments;
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore parse errors for incomplete JSON in stream
+                    }
+                }
+            }
+
+            // Cleanup toolCalls (remove holes if any)
+            toolCalls = toolCalls.filter(Boolean);
+
+            // Handle Tool Calls at the end of stream
+            if (toolCalls.length > 0) {
+                const toolResults = [];
+                let toolMarkers = "";
+                for (const toolCall of toolCalls) {
+                    try {
+                        const args = JSON.parse(toolCall.function.arguments || "{}");
+                        let result = { success: true };
+
+                        if (toolCall.function.name === "add_transaction") {
+                            let val = parseFloat(args.amount || args.wert || 0);
+                            let category = (args.category || "Sonstiges").trim();
+                            let name = (args.name || "Unbenannt").trim();
+                            
+                            // Guardrails: Stricter validation
+                            if (isNaN(val) || val === 0) {
+                                result = { success: false, error: "Invalid amount. Must be a non-zero number." };
+                            } else if (!category) {
+                                result = { success: false, error: "Category is required." };
+                            } else {
+                                // Date parsing (Relative or ISO)
+                                let timestamp = new Date().toISOString();
+                                if (args.date) {
+                                    const dStr = args.date.toLowerCase();
+                                    const now = new Date();
+                                    if (dStr === 'today' || dStr === 'heute') {
+                                        timestamp = now.toISOString();
+                                    } else if (dStr === 'yesterday' || dStr === 'gestern') {
+                                        now.setDate(now.getDate() - 1);
+                                        timestamp = now.toISOString();
+                                    } else if (!isNaN(Date.parse(args.date))) {
+                                        timestamp = new Date(args.date).toISOString();
+                                    }
+                                }
+
+                                const t = {
+                                    id: Math.floor(Date.now() + Math.random()),
+                                    name,
+                                    kategorie: category,
+                                    wert: val,
+                                    timestamp,
+                                    user_id: user_id
+                                };
+                                await dbRun(cDb, "INSERT INTO transactions (id, name, kategorie, wert, timestamp, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+                                    [t.id, t.name, t.kategorie, t.wert, t.timestamp, t.user_id]);
+                                
+                                await logAudit(company_id, user_id, 'ADD_TRANSACTION_AI', `Clair added transaction '${name}' via AI`, t.id, 'transaction');
+
+                                toolMarkers += `\nADD_TRANSACTION:${JSON.stringify({...args, id: t.id, amount: val, date: timestamp})}`;
+                                result = { 
+                                    success: true, 
+                                    action: "add", 
+                                    id: t.id, 
+                                    summary: `Successfully added ${val}€ for ${name} in category ${category} at ${timestamp.split('T')[0]}.`
+                                };
+                            }
+                        } 
+                        else if (toolCall.function.name === "delete_transaction") {
+                            toolMarkers += `\nDELETE_TRANSACTION:${JSON.stringify(args)}`;
+                            
+                            // Note: deletion is handled by frontend confirmation modal, 
+                            // but we log that the AI *requested* it.
+                            await logAudit(company_id, user_id, 'DELETE_TRANSACTION_AI_REQUEST', `Clair requested deletion of transaction ID ${args.id}`, args.id, 'transaction');
+
+                            result = { 
+                                success: true, 
+                                action: "request_delete", 
+                                id: args.id,
+                                summary: `Prepared deletion for transaction ID ${args.id} (${args.name || 'Unbenannt'}). Waiting for user confirmation.`
+                            };
+                        }
+                        else if (toolCall.function.name === "filter_dashboard") {
+                            toolMarkers += `\nQUERY:${JSON.stringify(args)}`;
+                            result = { 
+                                success: true, 
+                                action: "filter", 
+                                summary: `Dashboard filter applied: ${JSON.stringify(args)}.`
+                            };
+                        }
+                        else if (toolCall.function.name === "suggest_category") {
+                            const name = args.name || "";
+                            // Find category by looking at last usage of similar name
+                            const suggestion = await new Promise((resolve) => {
+                                cDb.get("SELECT kategorie, COUNT(*) as count FROM transactions WHERE name LIKE ? GROUP BY kategorie ORDER BY count DESC LIMIT 1", [`%${name}%`], (err, row) => {
+                                    resolve(err ? null : row);
+                                });
+                            });
+
+                            if (suggestion) {
+                                result = { 
+                                    success: true, 
+                                    category: suggestion.kategorie, 
+                                    confidence: suggestion.count >= 3 ? 0.95 : 0.75,
+                                    reason: `Previously used ${suggestion.count} times for similar names.`
+                                };
+                            } else {
+                                // Default to most common category overall
+                                const common = await new Promise((resolve) => {
+                                    cDb.get("SELECT kategorie, COUNT(*) as count FROM transactions GROUP BY kategorie ORDER BY count DESC LIMIT 1", (err, row) => {
+                                        resolve(err ? null : row);
+                                    });
+                                });
+                                result = { 
+                                    success: true, 
+                                    category: common ? common.kategorie : "Miscellaneous", 
+                                    confidence: 0.3,
+                                    reason: common ? `Most common category overall.` : "Fallback default."
+                                };
+                            }
+                        }
+                        else if (toolCall.function.name === "get_spending_analysis") {
+                            const timeframe = args.timeframe || "month";
+                            let filter = "";
+                            let prevFilter = "";
+                            const now = new Date();
+                            if (timeframe === "month") {
+                                const yyyymm = now.toISOString().slice(0, 7);
+                                filter = `WHERE t.timestamp LIKE '${yyyymm}%'`;
+                                
+                                const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                                const prevYyyymm = prevMonth.toISOString().slice(0, 7);
+                                prevFilter = `WHERE t.timestamp LIKE '${prevYyyymm}%'`;
+                            }
+
+                            const stats = await new Promise((resolve) => {
+                                const sql = `
+                                    SELECT 
+                                        c.name as kategorie, 
+                                        COALESCE(SUM(t.wert), 0) as total, 
+                                        COUNT(t.id) as count,
+                                        COALESCE(c.budget, 0) as budget
+                                    FROM categories c
+                                    LEFT JOIN transactions t ON c.name = t.kategorie ${filter ? 'AND ' + filter.replace('WHERE ', '') : ''}
+                                    GROUP BY c.name
+                                    ORDER BY total ASC
+                                `;
+                                cDb.all(sql, (err, rows) => { resolve(err ? [] : rows); });
+                            });
+
+                            // Anomaly Explainer Logic (Q3 Paket B)
+                            let anomalyReport = "";
+                            if (timeframe === "month" && prevFilter) {
+                                const prevStats = await new Promise((resolve) => {
+                                    const sql = `SELECT c.name as kategorie, COALESCE(SUM(t.wert), 0) as total FROM categories c
+                                                 LEFT JOIN transactions t ON c.name = t.kategorie AND ${prevFilter.replace('WHERE ', '')}
+                                                 GROUP BY c.name`;
+                                    cDb.all(sql, (err, rows) => { resolve(err ? [] : rows); });
+                                });
+
+                                const currentTotal = Math.abs(stats.reduce((acc, s) => acc + s.total, 0));
+                                const prevTotal = Math.abs(prevStats.reduce((acc, s) => acc + s.total, 0));
+                                
+                                if (prevTotal > 0) {
+                                    const diffPct = ((currentTotal - prevTotal) / prevTotal) * 100;
+                                    if (Math.abs(diffPct) > 15) {
+                                        anomalyReport = `Your total spending is ${Math.abs(diffPct).toFixed(0)}% ${diffPct > 0 ? 'higher' : 'lower'} than last month. `;
+                                    }
+                                }
+
+                                // Category specific anomalies
+                                stats.forEach(s => {
+                                    const prevCat = prevStats.find(p => p.kategorie === s.kategorie);
+                                    if (prevCat && Math.abs(prevCat.total) > 50) {
+                                        const catDiff = Math.abs(s.total) - Math.abs(prevCat.total);
+                                        const catPct = (catDiff / Math.abs(prevCat.total)) * 100;
+                                        if (catPct > 30) anomalyReport += `Significant increase in ${s.kategorie} (+${catPct.toFixed(0)}%). `;
+                                    }
+                                });
+                            }
+
+                            const totalRaw = stats.reduce((acc, s) => acc + s.total, 0);
+                            const totalConv = await convertCurrency(totalRaw, currency);
+                            const topExpense = stats.length > 0 ? stats[0] : null;
+
+                            // Budget Coach Logic
+                            const budgetAlerts = stats
+                                .filter(s => s.budget > 0)
+                                .map(s => {
+                                    const ratio = Math.abs(s.total) / s.budget;
+                                    if (ratio > 1) return `OVER_BUDGET: ${s.kategorie} (${(ratio*100).toFixed(0)}%)`;
+                                    if (ratio > 0.8) return `NEAR_LIMIT: ${s.kategorie} (${(ratio*100).toFixed(0)}%)`;
+                                    return null;
+                                }).filter(Boolean);
+
+                            const coachingTips = [];
+                            if (budgetAlerts.length > 0) coachingTips.push(`Careful: ${budgetAlerts.join(', ')}.`);
+                            if (topExpense && Math.abs(topExpense.total) > 500) coachingTips.push(`High ${topExpense.kategorie} spending detected.`);
+
+                            const convertedBreakdown = [];
+                            for (const s of stats) {
+                                const convVal = await convertCurrency(s.total, currency);
+                                const convBudget = await convertCurrency(s.budget, currency);
+                                convertedBreakdown.push({ 
+                                    category: s.kategorie, 
+                                    total: convVal.toFixed(2), 
+                                    count: s.count, 
+                                    budget: convBudget.toFixed(2),
+                                    currency: currency
+                                });
+                            }
+
+                            result = {
+                                success: true,
+                                timeframe,
+                                total_spending: totalConv.toFixed(2),
+                                currency: currency,
+                                category_breakdown: convertedBreakdown,
+                                budget_coach: coachingTips.join(' '),
+                                anomaly_explainer: anomalyReport,
+                                analysis_summary: `Spending analysis for ${timeframe}. Total: ${totalConv.toFixed(2)}${currency}. ${anomalyReport} ${coachingTips.join(' ')}`
+                            };
+                        }
+
+                        toolResults.push({ role: "tool", tool_call_id: toolCall.id, name: toolCall.function.name, content: JSON.stringify(result) });
+                    } catch (e) { console.error("Stream Tool Error", e); }
+                }
+
+                // Get conversational follow-up for tools
+                const followUpOptions = {
+                    messages: [...finalMessages, { role: "assistant", tool_calls: toolCalls }, ...toolResults],
+                    stream: true
+                };
+                
+                const followUpRes = await fetchWithFallback(followUpModels, followUpOptions);
+
+                let followUpBuffer = "";
+                const fDecoder = new TextDecoder("utf-8");
+                for await (const chunk of followUpRes.body) {
+                    followUpBuffer += fDecoder.decode(chunk, { stream: true });
+                    let lines = followUpBuffer.split('\n');
+                    followUpBuffer = lines.pop();
+                    for (let line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                        const dataStr = trimmed.slice(6);
+                        if (dataStr === '[DONE]') continue;
+                        try {
+                            const delta = JSON.parse(dataStr).choices[0].delta;
+                            if (delta.content) {
+                                fullContent += delta.content;
+                                sendSSE({ content: delta.content });
+                            }
+                        } catch (e) {}
+                    }
+                }
+                
+                if (toolMarkers) sendSSE({ content: toolMarkers });
+            }
+
+            if (!fullContent && toolCalls.length === 0) {
+                sendSSE({ content: "Ich konnte keine passenden Informationen finden. Kann ich dir bei etwas anderem helfen?" });
+            }
+
+            res.write('data: [DONE]\n\n');
+            res.end();
+        } else {
+            // Non-streaming fallback
+            const response = await fetchWithFallback(primaryModels, { messages: finalMessages, tools: aiTools });
+            const data = await response.json();
+            res.json(data);
+        }
 
     } catch(e) { 
         console.error("[Chat API Fatal]", e);
-        res.status(500).json({ error: e.message || "Internal server error" }); 
+        if (!res.headersSent) res.status(500).json({ error: e.message }); 
+        else { res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`); res.end(); }
     }
 });
 

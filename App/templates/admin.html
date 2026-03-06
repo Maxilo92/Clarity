@@ -17,32 +17,87 @@
         })();
     </script>
     <style>
-        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
-        .invite-list { margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; }
-        .invite-item { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; }
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px; }
+        .invite-list { margin-top: 15px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; }
+        .invite-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #f1f5f9; }
         .invite-item:last-child { border-bottom: none; }
         .code-pill { font-family: monospace; font-weight: bold; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; color: #475569; }
         .status-badge { font-size: 0.75em; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
         .status-active { background: #ecfdf5; color: #059669; }
         .status-expired { background: #fff7ed; color: #c2410c; }
         .status-used { background: #f1f5f9; color: #64748b; }
-        .btn-cancel { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85em; transition: 0.2s; }
-        .btn-cancel:hover { background: #fecaca; }
+        
         .btn-icon { 
             background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; 
             width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; 
             border-radius: 8px; cursor: pointer; transition: all 0.2s;
         }
         .btn-icon:hover { background: #e2e8f0; color: #6f42c1; border-color: #6f42c1; }
-        .employee-row { cursor: context-menu; transition: background 0.2s; }
-        .employee-row:hover { background: #f8fafc; }
         
-        /* Remove hover effect from static admin cards */
-        .admin-grid .link-card:hover {
-            transform: none !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
-            cursor: default;
+        /* Tabs Styling */
+        .admin-tabs { display: flex; gap: 5px; margin: 25px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 1px; }
+        .tab-btn { 
+            padding: 12px 24px; border: none; background: none; cursor: pointer; 
+            font-weight: 600; color: #64748b; border-bottom: 2px solid transparent;
+            transition: all 0.2s; font-size: 0.95rem;
         }
+        .tab-btn:hover { color: #1e293b; background: #f8fafc; }
+        .tab-btn.active { color: #6f42c1; border-bottom-color: #6f42c1; background: #f5f3ff; border-radius: 8px 8px 0 0; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* List Controls & Containers */
+        .list-controls { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .search-box { flex: 1; min-width: 250px; position: relative; }
+        .search-box input { width: 100%; padding: 10px 15px 10px 40px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        .search-box input:focus { border-color: #6f42c1; box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1); }
+        .search-box svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        
+        .filter-group { display: flex; gap: 10px; align-items: center; }
+        .filter-label { font-size: 0.85rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-select { padding: 9px 12px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; font-size: 0.9rem; color: #475569; cursor: pointer; outline: none; }
+        .filter-select:focus { border-color: #6f42c1; }
+
+        .scroll-container { max-height: 600px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; background: white; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .loading-trigger { padding: 25px; text-align: center; color: #94a3b8; font-size: 0.9rem; font-weight: 500; border-top: 1px solid #f1f5f9; }
+        
+        .table-responsive { width: 100%; border-collapse: collapse; }
+        th { position: sticky; top: 0; background: #f8fafc; z-index: 10; padding: 15px 20px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        
+        .empty-state { padding: 40px; text-align: center; color: #94a3b8; }
+        .empty-state svg { margin-bottom: 15px; opacity: 0.5; }
+
+        /* Context Menu Base Styling */
+        .context-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+            min-width: 200px;
+            padding: 8px;
+            animation: menuFade 0.15s ease-out;
+        }
+        @keyframes menuFade { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .context-menu-list { list-style: none; padding: 0; margin: 0; }
+        .context-menu-list li {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #475569;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .context-menu-list li:hover { background: #f8fafc; color: #6f42c1; }
+        .context-menu-list li.delete-opt { color: #dc2626; }
+        .context-menu-list li.delete-opt:hover { background: #fee2e2; }
     </style>
 </head>
 <body data-require-auth="true">
@@ -53,66 +108,28 @@
             </div>
             <nav>
                 <ul class="menu">
-                    <li class="menu-item">
-                        <a href="/">
-                            <span class="menu-icon"></span>
-                            <span>Home</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/dashboard">
-                            <span class="menu-icon"></span>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/insights">
-                            <span class="menu-icon"></span>
-                            <span>Financial Insights</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/settings">
-                            <span class="menu-icon"></span>
-                            <span>Settings</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/support">
-                            <span class="menu-icon"></span>
-                            <span>Support</span>
-                        </a>
-                    </li>
-
+                    <li class="menu-item"><a href="/"><span class="menu-icon"></span><span>Home</span></a></li>
+                    <li class="menu-item"><a href="/dashboard"><span class="menu-icon"></span><span>Dashboard</span></a></li>
+                    <li class="menu-item"><a href="/insights"><span class="menu-icon"></span><span>Financial Insights</span></a></li>
+                    <li class="menu-item"><a href="/settings"><span class="menu-icon"></span><span>Settings</span></a></li>
+                    <li class="menu-item"><a href="/support"><span class="menu-icon"></span><span>Support</span></a></li>
                     <li style="border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 14px 6px; list-style: none;"></li>
                     <li style="padding: 2px 18px 4px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.35); font-weight: 700; list-style: none;">Admin</li>
-                    
-                    <li class="menu-item active">
-                        <a href="/admin">
-                            <span class="menu-icon"></span>
-                            <span>Admin Panel</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="/dev-tools">
-                            <span class="menu-icon"></span>
-                            <span>Developer Tools</span>
-                        </a>
-                    </li>
+                    <li class="menu-item"><a href="/admin"><span class="menu-icon"></span><span>Admin Panel</span></a></li>
+                    <li class="menu-item"><a href="/dev-tools"><span class="menu-icon"></span><span>Developer Tools</span></a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
-                <a href="/logout" class="logout-btn">Log Out</a>
+                <a href="/logout" class="logout-btn">
+                    <span>Log Out</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </a>
             </div>
         </aside>
 
 		<main class="main-content">
 			<div class="header" style="display: flex; align-items: center;">
-                <div class="header-left" style="flex: 1;">
-				    <h1>Admin Panel</h1>
-                </div>
-                <div class="header-center" style="flex: 2; display: flex; justify-content: center;">
-                </div>
+                <div class="header-left" style="flex: 1;"><h1>Admin Panel</h1></div>
                 <div class="header-right" style="flex: 1; display: flex; justify-content: flex-end;">
                     <a href="/settings" class="header-profile-link" style="text-decoration: none; color: #1e293b; font-weight: 600; padding: 8px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f42c1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -121,69 +138,153 @@
                 </div>
 			</div>
 
-			<section class="hero-section">
+			<section class="hero-section" style="margin-bottom: 20px;">
 				<h2>Organization Management</h2>
-				<p>Manage employee access and monitor active invitation codes.</p>
+				<p>Centrally manage your team, monitor system security and configure AI context.</p>
 			</section>
 
-			<div class="admin-grid">
-				<div class="link-card" style="cursor: default;">
-					<h3>Generate New Invite</h3>
-					<p>Create a single-use code for a new team member.</p>
-                    
-                    <div style="margin-top: 20px;">
-                        <label style="font-size: 0.85em; font-weight: bold; color: #64748b;">EXPIRATION</label>
-                        <select id="inviteExpiry" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <option value="24">24 Hours</option>
-                            <option value="48">48 Hours</option>
-                            <option value="168">7 Days</option>
-                            <option value="0">Never expires</option>
-                        </select>
-                    </div>
+            <div class="admin-tabs">
+                <button class="tab-btn active" onclick="switchTab('team')">Team Management</button>
+                <button class="tab-btn" onclick="switchTab('system')">System Activity</button>
+                <button class="tab-btn" onclick="switchTab('config')">AI Configuration</button>
+            </div>
 
-                    <button class="support-btn" style="margin-top: 20px; width: 100%;" onclick="generateInvite()">Create Single-Use Code</button>
-                    
-                    <div id="inviteResult" style="display: none; margin-top: 20px; background: #f0f9ff; padding: 15px; border-radius: 10px; border: 1px solid #bae6fd;">
-                        <p style="font-size: 0.8em; font-weight: bold; color: #0369a1; margin-bottom: 5px;">INVITE CODE:</p>
-                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <input type="text" id="newCodeDisplay" style="flex: 1; padding: 10px; border: 1px solid #7dd3fc; border-radius: 6px; font-family: monospace; font-size: 1.2em; text-align: center; font-weight: bold;" readonly>
-                            <button onclick="copyToClipboard('newCodeDisplay')" style="padding: 0 15px; background: #0369a1; color: white; border: none; border-radius: 6px; cursor: pointer;">Copy</button>
+            <!-- Tab: Team Management -->
+            <div id="tab-team" class="tab-content active">
+                <div class="admin-grid">
+                    <div class="link-card">
+                        <h3>Generate New Invite</h3>
+                        <p>Create a single-use code for a new team member.</p>
+                        <div style="margin-top: 20px;">
+                            <label style="font-size: 0.85em; font-weight: bold; color: #64748b;">EXPIRATION</label>
+                            <select id="inviteExpiry" style="width: 100%; padding: 10px; margin-top: 5px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <option value="24">24 Hours</option>
+                                <option value="48">48 Hours</option>
+                                <option value="168">7 Days</option>
+                                <option value="0">Never expires</option>
+                            </select>
                         </div>
-                        <p style="font-size: 0.8em; font-weight: bold; color: #0369a1; margin-bottom: 5px;">DIRECT LINK:</p>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="newLinkDisplay" style="flex: 1; padding: 10px; border: 1px solid #7dd3fc; border-radius: 6px; font-size: 0.85em;" readonly>
-                            <button onclick="copyToClipboard('newLinkDisplay')" style="padding: 0 15px; background: #0369a1; color: white; border: none; border-radius: 6px; cursor: pointer;">Copy</button>
+                        <button class="support-btn" style="margin-top: 20px; width: 100%;" onclick="generateInvite()">Create Single-Use Code</button>
+                        <div id="inviteResult" style="display: none; margin-top: 20px; background: #f0f9ff; padding: 15px; border-radius: 10px; border: 1px solid #bae6fd;">
+                            <input type="text" id="newCodeDisplay" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #7dd3fc; border-radius: 6px; font-family: monospace; font-size: 1.2em; text-align: center; font-weight: bold;" readonly>
+                            <button class="support-btn" onclick="copyToClipboard('newCodeDisplay')" style="width: 100%; background: #0369a1;">Copy Code</button>
                         </div>
                     </div>
-				</div>
 
-				<div class="link-card" style="cursor: default;">
-					<h3>Active & Recent Invites</h3>
-					<div id="invitesContainer" class="invite-list">
-                        <div style="padding: 40px; text-align: center; color: #94a3b8;">Loading invites...</div>
+                    <div class="link-card">
+                        <h3>Active & Recent Invites</h3>
+                        <div id="invitesContainer" class="invite-list" style="max-height: 250px; overflow-y: auto;">
+                            <div style="padding: 20px; text-align: center; color: #94a3b8;">Loading invites...</div>
+                        </div>
                     </div>
-				</div>
-			</div>
-
-            <!-- Employee List Section -->
-            <section class="transactions" style="margin-top: 40px;">
-                <div class="transactions-header">
-                    <h2 class="transactions-title">Employee Management</h2>
                 </div>
-                <table class="transactions-table" id="employeesTable">
-                    <thead>
-                        <tr>
-                            <th>Full Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="employeesContainer">
-                        <tr><td colspan="4" style="text-align: center; padding: 20px; color: #94a3b8;">Loading employees...</td></tr>
-                    </tbody>
-                </table>
-            </section>
+
+                <div class="transactions" style="margin-top: 40px;">
+                    <div class="transactions-header">
+                        <h2 class="transactions-title">Employee List</h2>
+                    </div>
+                    
+                    <div class="list-controls">
+                        <div class="search-box">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="employeeSearch" placeholder="Search by name or email...">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Role:</span>
+                            <select id="employeeRoleFilter" class="filter-select">
+                                <option value="all">All Roles</option>
+                                <option value="admin">Admin Only</option>
+                                <option value="user">User Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="scroll-container" id="employeeScroll">
+                        <table class="table-responsive">
+                            <thead>
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesContainer"></tbody>
+                        </table>
+                        <div id="employeeLoader" class="loading-trigger">Scroll to load more</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: System Activity -->
+            <div id="tab-system" class="tab-content">
+                <div class="transactions">
+                    <div class="transactions-header">
+                        <h2 class="transactions-title">Audit Log</h2>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">Trace every administrative and significant action in the system.</p>
+                    </div>
+
+                    <div class="list-controls">
+                        <div class="search-box">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="auditSearch" placeholder="Search details, users or entity IDs...">
+                        </div>
+                        <div class="filter-group">
+                            <span class="filter-label">Action:</span>
+                            <select id="auditActionFilter" class="filter-select">
+                                <option value="all">All Actions</option>
+                                <optgroup label="Transactions">
+                                    <option value="ADD_TRANSACTION">Add Transaction</option>
+                                    <option value="UPDATE_TRANSACTION">Update Transaction</option>
+                                    <option value="DELETE_TRANSACTION">Delete Transaction</option>
+                                </optgroup>
+                                <optgroup label="AI / System">
+                                    <option value="ADD_TRANSACTION_AI">AI Action</option>
+                                    <option value="UPDATE_BUDGET">Update Budget</option>
+                                    <option value="ADD_CATEGORY">Add Category</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="scroll-container" id="auditScroll">
+                        <table class="table-responsive">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                    <th>Target</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditLogContainer"></tbody>
+                        </table>
+                        <div id="auditLoader" class="loading-trigger">Scroll to load more</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: AI Configuration -->
+            <div id="tab-config" class="tab-content">
+                <div class="link-card" style="max-width: 800px; margin: 0 auto;">
+					<h3>Organization AI Profile</h3>
+                    <p>Provide Claire with specific knowledge about your organization's financial rules, reporting structures, or specific terminology. These instructions will influence how the AI interprets and categorizes your data.</p>
+                    
+                    <div style="margin-top: 25px;">
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 8px; text-transform: uppercase;">Organization Context & Rules</label>
+                        <textarea id="companyContext" style="width: 100%; height: 250px; border-radius: 12px; border: 1px solid #e2e8f0; padding: 15px; font-family: inherit; font-size: 0.95rem; line-height: 1.5; resize: vertical;" placeholder="Example: 'Always categorize AWS and Azure under Infrastructure Costs. Our fiscal year starts in April...'"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
+                        <span id="contextStatus" style="font-size: 0.9rem; color: #059669; visibility: hidden; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Changes saved successfully.
+                        </span>
+                        <button class="support-btn" style="min-width: 150px;" onclick="saveCompanyContext()">Update AI Profile</button>
+                    </div>
+				</div>
+            </div>
 
 			<footer class="app-footer">
 				<p>&copy; 2026 Clarity - Admin Panel <span class="footer-version"></span></p>
@@ -191,21 +292,12 @@
 		</main>
 	</div>
 
-    <!-- Admin Context Menu (Employees) -->
     <div id="adminContextMenu" class="context-menu">
         <ul class="context-menu-list">
             <li id="amMakeAdmin">Promote to Admin</li>
             <li id="amMakeUser">Demote to User</li>
+            <li id="amResetPassword" style="color: #6f42c1; font-weight: 600;">Reset Password (OTP)</li>
             <li id="amRemove" class="delete-opt">Remove User</li>
-        </ul>
-    </div>
-
-    <!-- Invite Context Menu -->
-    <div id="inviteContextMenu" class="context-menu">
-        <ul class="context-menu-list">
-            <li id="imCopyCode">Copy Code</li>
-            <li id="imCopyLink">Copy Invite Link</li>
-            <li id="imRevoke" class="delete-opt">Revoke Invite</li>
         </ul>
     </div>
 
@@ -213,107 +305,255 @@
     <script>
         const currentUser = JSON.parse(localStorage.getItem('clarityUser'));
         let selectedUserId = null;
-        let selectedInviteCode = null;
+
+        // --- INFINITE SCROLL STATE ---
+        const state = {
+            employees: { offset: 0, limit: 20, loading: false, hasMore: true, search: '', role: 'all' },
+            audit: { offset: 0, limit: 20, loading: false, hasMore: true, search: '', action: 'all' }
+        };
+
+        // --- TAB LOGIC ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const activeBtn = document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`);
+            const activeContent = document.getElementById(`tab-${tabName}`);
+            
+            if (activeBtn && activeContent) {
+                activeBtn.classList.add('active');
+                activeContent.classList.add('active');
+            }
+
+            // Reload data if needed
+            if (tabName === 'team' && state.employees.offset === 0) fetchEmployees(true);
+            if (tabName === 'system' && state.audit.offset === 0) fetchAudit(true);
+        }
 
         // --- INVITE LOGIC ---
         async function loadInvites() {
             const container = document.getElementById('invitesContainer');
+            if (!container) return;
             try {
-                const res = await fetch(`/api/invites?company_id=${currentUser.company_id}`);
+                const res = await fetch(`/api/invites?company_id=${currentUser.company_id}&requester_id=${currentUser.id}`);
                 const data = await res.json();
-                
                 if (!data.invites || data.invites.length === 0) {
-                    container.innerHTML = '<div style="padding: 40px; text-align: center; color: #94a3b8;">No invites generated yet.</div>';
+                    container.innerHTML = '<div class="empty-state">No active invites.</div>';
                     return;
                 }
-
                 const now = new Date();
                 container.innerHTML = data.invites.map(inv => {
-                    const expiryDate = inv.expires_at ? new Date(inv.expires_at) : null;
-                    const isExpired = expiryDate && expiryDate < now;
-                    let statusHtml = '';
-                    let actionHtml = '';
-                    let showManage = false;
-
-                    if (inv.used) {
-                        statusHtml = '<span class="status-badge status-used">Used / Revoked</span>';
-                    } else if (isExpired) {
-                        statusHtml = '<span class="status-badge status-expired">Expired</span>';
-                    } else {
-                        statusHtml = '<span class="status-badge status-active">Active</span>';
-                        showManage = true;
-                        actionHtml = `
-                            <button class="btn-icon" onclick="showInviteMenu(event, '${inv.code}')" title="Manage Invite">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                            </button>`;
-                    }
-
-                    const expiryText = expiryDate ? expiryDate.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Never';
-
+                    const isExpired = inv.expires_at && new Date(inv.expires_at) < now;
+                    let status = inv.used ? 'used' : (isExpired ? 'expired' : 'active');
                     return `
-                        <div class="invite-item invite-row" data-code="${inv.code}" data-manage="${showManage}">
-                            <div>
-                                <div class="code-pill">${inv.code}</div>
-                                <div style="font-size: 0.7em; color: #94a3b8; margin-top: 4px;">Expires: ${expiryText}</div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                ${statusHtml}
-                                ${actionHtml}
-                            </div>
+                        <div class="invite-item">
+                            <div><div class="code-pill">${inv.code}</div></div>
+                            <span class="status-badge status-${status}">${status.toUpperCase()}</span>
                         </div>
                     `;
                 }).join('');
+            } catch (err) { container.innerHTML = '<div class="empty-state">Error loading invites.</div>'; }
+        }
 
-                // Context Menu for Invites
-                document.querySelectorAll('.invite-row').forEach(row => {
-                    if (row.dataset.manage === "true") {
-                        row.addEventListener('contextmenu', (e) => {
-                            e.preventDefault();
-                            showInviteMenu(e, row.dataset.code);
-                        });
-                    }
+        // --- EMPLOYEE LOGIC ---
+        let employeeController = null;
+        async function fetchEmployees(reset = false) {
+            const container = document.getElementById('employeesContainer');
+            if (!container) return;
+            
+            if (reset) {
+                if (employeeController) employeeController.abort();
+                state.employees.offset = 0;
+                state.employees.hasMore = true;
+                state.employees.loading = false;
+                container.innerHTML = '<tr><td colspan="4" class="empty-state">Loading...</td></tr>';
+            }
+
+            if (state.employees.loading || !state.employees.hasMore) return;
+            
+            state.employees.loading = true;
+            employeeController = new AbortController();
+
+            const loader = document.getElementById('employeeLoader');
+            if (loader) {
+                loader.textContent = 'Loading team members...';
+                loader.style.display = 'block';
+            }
+
+            try {
+                const res = await fetch(`/api/users?company_id=${currentUser.company_id}&requester_id=${currentUser.id}&search=${encodeURIComponent(state.employees.search)}&role=${state.employees.role}&limit=${state.employees.limit}&offset=${state.employees.offset}`, {
+                    signal: employeeController.signal
                 });
+                const data = await res.json();
+                const users = data.users || [];
+                
+                if (reset) container.innerHTML = '';
 
-            } catch (err) {
-                container.innerHTML = '<div style="padding: 40px; text-align: center; color: #dc2626;">Error loading invites.</div>';
+                if (users.length < state.employees.limit) state.employees.hasMore = false;
+                state.employees.offset += users.length;
+
+                const html = users.map(u => `
+                    <tr class="employee-row" data-id="${u.id}" data-role="${u.role}">
+                        <td style="font-weight: 600;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 32px; height: 32px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.8rem;">${u.full_name.charAt(0)}</div>
+                                <span>${u.full_name} ${u.id === currentUser.id ? '<span style="color: #94a3b8; font-weight: 400; font-size: 0.8rem;">(You)</span>' : ''}</span>
+                            </div>
+                        </td>
+                        <td style="color: #64748b;">${u.email}</td>
+                        <td><span class="status-badge ${u.role === 'admin' ? 'status-active' : 'status-used'}">${u.role.toUpperCase()}</span></td>
+                        <td style="text-align: right;">
+                            ${u.id !== currentUser.id ? `
+                                <button class="btn-icon" onclick="showEmployeeMenu(event, ${u.id}, '${u.role}')" title="Actions">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                                </button>` : '<span style="color: #cbd5e1; font-size: 0.8rem;">Master Admin</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+                
+                if (reset && users.length === 0) {
+                    container.innerHTML = '<tr><td colspan="4" class="empty-state">No matching team members found.</td></tr>';
+                } else {
+                    container.insertAdjacentHTML('beforeend', html);
+                }
+                
+                if (loader) {
+                    loader.textContent = state.employees.hasMore ? 'Scroll to load more' : 'All team members loaded.';
+                    loader.style.display = (!state.employees.hasMore && users.length > 0 && users.length < 5) ? 'none' : 'block';
+                }
+
+            } catch (err) { 
+                if (err.name === 'AbortError') return;
+                if (loader) loader.textContent = 'Error loading data.'; 
+            } finally {
+                state.employees.loading = false;
             }
         }
 
-        const inviteMenu = document.getElementById('inviteContextMenu');
-        function showInviteMenu(e, code) {
-            selectedInviteCode = code;
-            inviteMenu.style.display = 'block';
+        // --- AUDIT LOG LOGIC ---
+        let auditController = null;
+        async function fetchAudit(reset = false) {
+            const container = document.getElementById('auditLogContainer');
+            if (!container) return;
             
-            // Fixed position requires clientX/Y
-            let x = e.clientX;
-            let y = e.clientY;
+            if (reset) {
+                if (auditController) auditController.abort();
+                state.audit.offset = 0;
+                state.audit.hasMore = true;
+                state.audit.loading = false;
+                container.innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
+            }
 
-            // Collision detection
-            if (x + 160 > window.innerWidth) x -= 160;
-            if (y + 120 > window.innerHeight) y -= 120;
-
-            inviteMenu.style.left = x + 'px';
-            inviteMenu.style.top = y + 'px';
+            if (state.audit.loading || (!reset && !state.audit.hasMore)) return;
             
-            setTimeout(() => {
-                const closeInviteMenu = () => { inviteMenu.style.display = 'none'; window.removeEventListener('click', closeInviteMenu); };
-                window.addEventListener('click', closeInviteMenu);
-            }, 10);
+            state.audit.loading = true;
+            auditController = new AbortController();
+
+            const loader = document.getElementById('auditLoader');
+            if (loader) {
+                loader.textContent = 'Loading activity logs...';
+                loader.style.display = 'block';
+            }
+
+            try {
+                const res = await fetch(`/api/audit-log?company_id=${currentUser.company_id}&requester_id=${currentUser.id}&search=${encodeURIComponent(state.audit.search)}&action=${state.audit.action}&limit=${state.audit.limit}&offset=${state.audit.offset}`, {
+                    signal: auditController.signal
+                });
+                const data = await res.json();
+                const logs = data.audit_log || [];
+
+                if (reset) container.innerHTML = '';
+
+                if (logs.length < state.audit.limit) state.audit.hasMore = false;
+                state.audit.offset += logs.length;
+
+                const html = logs.map(log => {
+                    const date = new Date(log.timestamp).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    let actionClass = log.action.includes('DELETE') ? 'status-expired' : (log.action.includes('ADD') ? 'status-active' : 'status-used');
+                    return `
+                        <tr>
+                            <td style="font-size: 0.85rem; color: #64748b; white-space: nowrap;">${date}</td>
+                            <td style="font-weight: 600;">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span>${log.user_name || 'System / AI'}</span>
+                                    <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 400;">ID: ${log.user_id || 'system'}</span>
+                                </div>
+                            </td>
+                            <td><span class="status-badge ${actionClass}" style="font-size: 0.7rem;">${log.action}</span></td>
+                            <td style="font-size: 0.9rem; max-width: 300px; line-height: 1.4;">${log.details}</td>
+                            <td style="font-family: monospace; font-size: 0.8rem; color: #64748b; background: #f8fafc; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 10px;">${log.entity_id || 'n/a'}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                if (reset && logs.length === 0) {
+                    container.innerHTML = '<tr><td colspan="5" class="empty-state">No activity logs found.</td></tr>';
+                } else {
+                    container.insertAdjacentHTML('beforeend', html);
+                }
+
+                if (loader) loader.textContent = state.audit.hasMore ? 'Scroll to load more' : 'End of activity log.';
+            } catch (err) { 
+                if (err.name === 'AbortError') return;
+                if (loader) loader.textContent = 'Error loading logs.'; 
+            } finally {
+                state.audit.loading = false;
+            }
         }
 
-        document.getElementById('imCopyCode').onclick = () => {
-            navigator.clipboard.writeText(selectedInviteCode);
-            alert("Code copied!");
-        };
+        // --- CONTEXT MENU LOGIC ---
+        function showEmployeeMenu(e, userId, role) {
+            e.stopPropagation();
+            selectedUserId = userId;
+            const menu = document.getElementById('adminContextMenu');
+            if (!menu) return;
+            menu.style.display = 'block';
+            
+            let x = e.pageX;
+            let y = e.pageY;
+            const menuWidth = 200;
+            const menuHeight = 160;
+            
+            if (x + menuWidth > window.innerWidth) x -= menuWidth;
+            if (y + menuHeight > window.innerHeight) y -= menuHeight;
+            
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            
+            const amMakeAdmin = document.getElementById('amMakeAdmin');
+            const amMakeUser = document.getElementById('amMakeUser');
+            if (amMakeAdmin) amMakeAdmin.style.display = role === 'admin' ? 'none' : 'flex';
+            if (amMakeUser) amMakeUser.style.display = role === 'admin' ? 'flex' : 'none';
+        }
 
-        document.getElementById('imCopyLink').onclick = () => {
-            const baseUrl = window.location.origin;
-            const inviteUrl = `${baseUrl}/signup?invite_code=${selectedInviteCode}`;
-            navigator.clipboard.writeText(inviteUrl);
-            alert("Link copied!");
-        };
+        async function updateUserRole(newRole) {
+            if (!confirm(`Confirm changing user role to ${newRole.toUpperCase()}?`)) return;
+            try {
+                const res = await fetch(`/api/users/${selectedUserId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company_id: currentUser.company_id, requester_id: currentUser.id, role: newRole })
+                });
+                if (res.ok) {
+                    fetchEmployees(true);
+                    fetchAudit(true);
+                } else {
+                    const data = await res.json();
+                    alert(data.message || "Failed to update role.");
+                }
+            } catch (err) { alert("Communication error."); }
+        }
 
-        document.getElementById('imRevoke').onclick = () => cancelInvite(selectedInviteCode);
+        async function removeUser() {
+            if (!confirm("DANGER: Permanently delete this user? This cannot be undone.")) return;
+            try {
+                const res = await fetch(`/api/users/${selectedUserId}?company_id=${currentUser.company_id}&requester_id=${currentUser.id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    fetchEmployees(true);
+                    fetchAudit(true);
+                } else alert("Deletion failed.");
+            } catch (err) { alert("Error connecting to server."); }
+        }
 
         async function generateInvite() {
             const hours = document.getElementById('inviteExpiry').value;
@@ -321,147 +561,124 @@
                 const res = await fetch('/api/invites', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        company_id: currentUser.company_id, 
-                        expires_in_hours: hours === "0" ? null : hours 
-                    })
+                    body: JSON.stringify({ company_id: currentUser.company_id, requester_id: currentUser.id, expires_in_hours: hours === "0" ? null : hours })
                 });
                 const data = await res.json();
-                if (data.error) throw new Error(data.error);
-
-                const baseUrl = window.location.origin;
-                const inviteUrl = `${baseUrl}/signup?invite_code=${data.code}`;
-
-                document.getElementById('inviteResult').style.display = 'block';
-                document.getElementById('newCodeDisplay').value = data.code;
-                document.getElementById('newLinkDisplay').value = inviteUrl;
-                
-                // Copy link by default
-                copyToClipboard('newLinkDisplay');
-                
-                alert("Invite code generated! Link copied to clipboard.");
+                const resDiv = document.getElementById('inviteResult');
+                const disp = document.getElementById('newCodeDisplay');
+                if (resDiv && disp) {
+                    resDiv.style.display = 'block';
+                    disp.value = data.code;
+                }
                 loadInvites();
-            } catch (err) {
-                alert("Failed: " + err.message);
-            }
+                fetchAudit(true);
+            } catch (err) { alert("Failed to generate invite."); }
+        }
+
+        async function saveCompanyContext() {
+            const context = document.getElementById('companyContext').value;
+            const statusEl = document.getElementById('contextStatus');
+            try {
+                await fetch('/api/companies/context', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company_id: currentUser.company_id, requester_id: currentUser.id, user_id: currentUser.id, context })
+                });
+                if (statusEl) {
+                    statusEl.style.visibility = 'visible';
+                    setTimeout(() => statusEl.style.visibility = 'hidden', 3000);
+                }
+                fetchAudit(true);
+            } catch(e) { alert("Failed to save profile."); }
+        }
+
+        async function loadCompanyContext() {
+            const res = await fetch(`/api/companies/context?company_id=${currentUser.company_id}&requester_id=${currentUser.id}`);
+            const data = await res.json();
+            const el = document.getElementById('companyContext');
+            if (el) el.value = data.context || "";
         }
 
         function copyToClipboard(id) {
             const el = document.getElementById(id);
+            if (!el) return;
             el.select();
             document.execCommand('copy');
+            alert("Code copied to clipboard!");
         }
 
-        async function cancelInvite(code) {
-            if (!confirm("Are you sure you want to revoke this invite? It will no longer be usable.")) return;
-            try {
-                const res = await fetch('/api/invites/cancel', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, company_id: currentUser.company_id })
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const setupScroll = (id, callback) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('scroll', () => {
+                    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) callback();
                 });
-                if (res.ok) loadInvites();
-            } catch (err) {
-                alert("Revoke failed.");
-            }
-        }
+            };
 
-        // --- EMPLOYEE LOGIC ---
-        async function loadEmployees() {
-            const container = document.getElementById('employeesContainer');
-            try {
-                const res = await fetch(`/api/users?company_id=${currentUser.company_id}`);
-                const data = await res.json();
-                
-                if (!data.users || data.users.length === 0) {
-                    container.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">No employees found.</td></tr>';
-                    return;
-                }
+            setupScroll('employeeScroll', () => fetchEmployees());
+            setupScroll('auditScroll', () => fetchAudit());
 
-                container.innerHTML = data.users.map(u => `
-                    <tr data-id="${u.id}" data-role="${u.role}" class="employee-row">
-                        <td style="font-weight: 600;">${u.full_name} ${u.id === currentUser.id ? '(You)' : ''}</td>
-                        <td>${u.email}</td>
-                        <td><span class="status-badge ${u.role === 'admin' ? 'status-active' : 'status-used'}">${u.role.toUpperCase()}</span></td>
-                        <td>
-                            ${u.id !== currentUser.id ? `
-                                <button class="btn-icon" onclick="showEmployeeMenu(event, ${u.id}, '${u.role}')" title="Manage Employee">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                </button>` : '-'}
-                        </td>
-                    </tr>
-                `).join('');
+            let empDebounce, auditDebounce;
+            const empSearch = document.getElementById('employeeSearch');
+            if (empSearch) empSearch.oninput = (e) => {
+                clearTimeout(empDebounce);
+                empDebounce = setTimeout(() => { state.employees.search = e.target.value; fetchEmployees(true); }, 400);
+            };
 
-                // Context Menu Right Click
-                document.querySelectorAll('.employee-row').forEach(row => {
-                    if (parseInt(row.dataset.id) === currentUser.id) return;
-                    row.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        showEmployeeMenu(e, row.dataset.id, row.dataset.role);
+            const empRoleFilter = document.getElementById('employeeRoleFilter');
+            if (empRoleFilter) empRoleFilter.onchange = (e) => {
+                state.employees.role = e.target.value;
+                fetchEmployees(true);
+            };
+
+            const auditSearch = document.getElementById('auditSearch');
+            if (auditSearch) auditSearch.oninput = (e) => {
+                clearTimeout(auditDebounce);
+                auditDebounce = setTimeout(() => { state.audit.search = e.target.value; fetchAudit(true); }, 400);
+            };
+
+            const auditActionFilter = document.getElementById('auditActionFilter');
+            if (auditActionFilter) auditActionFilter.onchange = (e) => {
+                state.audit.action = e.target.value;
+                fetchAudit(true);
+            };
+
+            // Global context menu dismiss
+            window.addEventListener('click', () => {
+                const menu = document.getElementById('adminContextMenu');
+                if (menu) menu.style.display = 'none';
+            });
+
+            // Action listeners
+            const amAdmin = document.getElementById('amMakeAdmin');
+            if (amAdmin) amAdmin.onclick = () => updateUserRole('admin');
+            const amUser = document.getElementById('amMakeUser');
+            if (amUser) amUser.onclick = () => updateUserRole('user');
+            const amRem = document.getElementById('amRemove');
+            if (amRem) amRem.onclick = removeUser;
+            const amRes = document.getElementById('amResetPassword');
+            if (amRes) amRes.onclick = async () => {
+                try {
+                    const res = await fetch('/api/users/reset-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ company_id: currentUser.company_id, requester_id: currentUser.id, user_id: selectedUserId })
                     });
-                });
+                    const data = await res.json();
+                    if (data.temp_password) {
+                        alert(`Password reset successful.\n\nTemporary Password: ${data.temp_password}\n\nPlease share this securely with the user.`);
+                    } else alert("Failed to reset password.");
+                } catch (err) { alert("Error."); }
+            };
 
-            } catch (err) {
-                container.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #dc2626;">Error loading employees.</td></tr>';
-            }
-        }
-
-        const adminMenu = document.getElementById('adminContextMenu');
-        
-        function showEmployeeMenu(e, id, role) {
-            selectedUserId = parseInt(id);
-            adminMenu.style.display = 'block';
-            
-            // Adjust options based on role
-            document.getElementById('amMakeAdmin').style.display = (role === 'admin') ? 'none' : 'block';
-            document.getElementById('amMakeUser').style.display = (role === 'user') ? 'none' : 'block';
-
-            let x = e.clientX;
-            let y = e.clientY;
-
-            // Collision detection
-            if (x + 160 > window.innerWidth) x -= 160;
-            if (y + 120 > window.innerHeight) y -= 120;
-
-            adminMenu.style.left = x + 'px';
-            adminMenu.style.top = y + 'px';
-            
-            // Close menu on click elsewhere
-            setTimeout(() => {
-                const closeMenu = () => { adminMenu.style.display = 'none'; window.removeEventListener('click', closeMenu); };
-                window.addEventListener('click', closeMenu);
-            }, 10);
-        }
-
-        document.getElementById('amMakeAdmin').onclick = () => updateUserRole('admin');
-        document.getElementById('amMakeUser').onclick = () => updateUserRole('user');
-        document.getElementById('amRemove').onclick = async () => {
-            if (!confirm("Are you sure? This employee will lose all access immediately.")) return;
-            try {
-                const res = await fetch(`/api/users/${selectedUserId}`, { method: 'DELETE' });
-                if (res.ok) loadEmployees();
-            } catch(e) { alert("Action failed."); }
-        };
-
-        async function updateUserRole(newRole) {
-            try {
-                const res = await fetch(`/api/users/${selectedUserId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ company_id: currentUser.company_id, role: newRole })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    loadEmployees();
-                } else {
-                    alert(data.message || data.error || "Action failed.");
-                }
-            } catch(e) { alert("Action failed."); }
-        }
-
-        // Initial load
-        loadInvites();
-        loadEmployees();
+            // Initial data load
+            loadInvites();
+            loadCompanyContext();
+            fetchEmployees();
+        });
     </script>
+    <script src="../static/js/sidebar-admin.js"></script>
 </body>
 </html>

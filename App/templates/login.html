@@ -134,6 +134,29 @@
                 </div>
             </div>
         </form>
+
+        <!-- Change Password Form (Hidden by default) -->
+        <form id="changePasswordForm" class="login-form" style="display: none;" method="POST" novalidate>
+            <div class="login-card-header">
+                <p style="text-transform: uppercase; font-size: 0.75rem; font-weight: 700; color: #6f42c1; letter-spacing: 1px; margin-bottom: 8px;">Action Required</p>
+                <h2 style="font-size: 1.5rem; color: #1e293b; margin-bottom: 5px;">Set New Password</h2>
+                <p class="subtext">Your password was reset. Please choose a new one to continue.</p>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label for="newPassword" style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b; font-size: 0.9rem;">New Password</label>
+                <input id="newPassword" name="newPassword" type="password" placeholder="Min. 8 characters" required style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="confirmPassword" style="display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Confirm New Password</label>
+                <input id="confirmPassword" name="confirmPassword" type="password" placeholder="Repeat password" required style="width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 1rem;">
+            </div>
+
+            <button type="submit" class="login-button" style="width: 100%; padding: 14px; background: #6f42c1; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: background 0.2s;">Update Password & Login</button>
+            
+            <p id="changeError" class="login-error" aria-live="polite" style="color: #dc2626; text-align: center; margin-top: 15px; font-size: 0.85rem; font-weight: 500;"></p>
+        </form>
 	</div>
 
     <!-- Fixed version tag -->

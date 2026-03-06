@@ -93,7 +93,7 @@
                             <span>Financial Insights</span>
                         </a>
                     </li>
-                    <li class="menu-item active">
+                    <li class="menu-item">
                         <a href="/settings">
                             <span class="menu-icon"></span>
                             <span>Settings</span>
@@ -108,7 +108,10 @@
                 </ul>
             </nav>
             <div class="sidebar-footer">
-                <a href="/logout" class="logout-btn">Log Out</a>
+                <a href="/logout" class="logout-btn">
+                    <span>Log Out</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </a>
             </div>
         </aside>
 
@@ -193,6 +196,44 @@
                                 <input type="text" id="clairNickname" class="settings-input" placeholder="e.g. Max" style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; width: 200px;">
                             </div>
                         </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <label>AI Response Tone</label>
+                                <p>Adjust how Clair communicates with you.</p>
+                            </div>
+                            <div class="settings-control">
+                                <select id="clairTone" class="settings-input" style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; width: 200px; background: white;">
+                                    <option value="balanced">Balanced & Helpful</option>
+                                    <option value="professional">Professional & Direct</option>
+                                    <option value="casual">Casual & Friendly</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <label>Preferred Currency</label>
+                                <p>Which currency should Clair use for insights?</p>
+                            </div>
+                            <div class="settings-control">
+                                <select id="clairCurrency" class="settings-input" style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; width: 200px; background: white;">
+                                    <option value="EUR">Euro (€)</option>
+                                    <option value="USD">US Dollar ($)</option>
+                                    <option value="GBP">British Pound (£)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-info">
+                                <label>Language</label>
+                                <p>Language for AI interactions.</p>
+                            </div>
+                            <div class="settings-control">
+                                <select id="clairLanguage" class="settings-input" style="border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; width: 200px; background: white;">
+                                    <option value="de">Deutsch</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                        </div>
                     </section>
 
                     <!-- Custom Categories -->
@@ -256,7 +297,6 @@
     <script src="../static/js/ai-chat.js"></script>
     <script src="../static/js/settings-search.js"></script>
     <script src="../static/js/category-manager.js"></script>
-    <script src="../static/js/sidebar-admin.js"></script>
     <script>
         const userStr = localStorage.getItem('clarityUser');
         let currentUser = null;
@@ -275,13 +315,14 @@
             fetch(`/api/config?user_id=${currentUser.id}&company_id=${currentUser.company_id}`)
                 .then(res => res.json())
                 .then(config => {
-                    const nicknameInput = document.getElementById('clairNickname');
                     if (config.nickname) {
-                        nicknameInput.value = config.nickname;
+                        document.getElementById('clairNickname').value = config.nickname;
                     } else if (currentUser.full_name) {
-                        // Default to first name if nothing set
-                        nicknameInput.value = currentUser.full_name.split(' ')[0];
+                        document.getElementById('clairNickname').value = currentUser.full_name.split(' ')[0];
                     }
+                    if (config.ai_tone) document.getElementById('clairTone').value = config.ai_tone;
+                    if (config.currency) document.getElementById('clairCurrency').value = config.currency;
+                    if (config.language) document.getElementById('clairLanguage').value = config.language;
                 });
         }
 
@@ -289,13 +330,20 @@
         document.getElementById('saveAllSettings').onclick = function() {
             if (!currentUser) return;
             const nickname = document.getElementById('clairNickname').value.trim();
+            const ai_tone = document.getElementById('clairTone').value;
+            const currency = document.getElementById('clairCurrency').value;
+            const language = document.getElementById('clairLanguage').value;
+
             fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: currentUser.id,
                     company_id: currentUser.company_id,
-                    nickname: nickname
+                    nickname,
+                    ai_tone,
+                    currency,
+                    language
                 })
             })
             .then(res => res.json())
@@ -396,5 +444,6 @@
     <button class="diamond-btn" title="Open AI Assistant" aria-label="Open AI Chat">
         <img src="../assets/icons/joule_logo.png" alt="AI Assistant">
     </button>
+    <script src="../static/js/sidebar-admin.js"></script>
 </body>
 </html>
