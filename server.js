@@ -47,6 +47,7 @@ function getCompanyDb(companyId) {
         cDb.serialize(() => {
             cDb.run(`ALTER TABLE categories ADD COLUMN budget REAL DEFAULT 0`, (err) => {});
             cDb.run(`ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0`, (err) => {});
+            cDb.run(`ALTER TABLE users ADD COLUMN nickname TEXT`, (err) => {});
         });
         migrationCache.add(companyId);
     }
@@ -1086,10 +1087,31 @@ app.post('/api/onboarding/admin', async (req, res) => {
 
 app.post('/api/users/login', async (req, res) => {
     const { email, password } = req.body;
+    
+    // Extract domain from email
+    const domain = email.split('@')[1];
+    
+    // Check if company exists for this domain
+    const company = await new Promise((resolve, reject) => {
+        sysDb.get("SELECT id FROM companies WHERE domain = ?", [domain], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+    
     sysDb.get("SELECT company_id FROM user_index WHERE email = ?", [email], async (err, index) => {
         if (!index) return res.status(401).json({ error: "Invalid credentials" });
         
-        const cDb = getCompanyDb(index.company_id);
+        let correctCompanyId = index.company_id;
+        
+        // AUTO-CORRECTION: If domain-based company exists and differs from user_index, correct it
+        if (company && company.id !== index.company_id) {
+            console.log(`[Login] Correcting company assignment for ${email}: ${index.company_id} -> ${company.id}`);
+            sysDb.run("UPDATE user_index SET company_id = ? WHERE email = ?", [company.id, email]);
+            correctCompanyId = company.id;
+        }
+        
+        const cDb = getCompanyDb(correctCompanyId);
         cDb.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
             cDb.close();
             if (!user) return res.status(401).json({ error: "Invalid credentials" });
@@ -1098,7 +1120,7 @@ app.post('/api/users/login', async (req, res) => {
             if (!match) return res.status(401).json({ error: "Invalid credentials" });
             
             delete user.password;
-            res.json({ user: { ...user, company_id: index.company_id } });
+            res.json({ user: { ...user, company_id: correctCompanyId } });
         });
     });
 });
@@ -1108,7 +1130,7 @@ app.get('/api/users', isManager, (req, res) => {
     if (!company_id) return res.status(400).json({ error: "company_id required" });
     
     const cDb = getCompanyDb(company_id);
-    let sql = "SELECT id, full_name, email, role, nickname FROM users WHERE 1=1";
+    let sql = "SELECT id, full_name, email, role FROM users WHERE 1=1";
     let params = [];
     
     if (search) {
@@ -1183,26 +1205,55 @@ app.post('/api/users/reset-password', isAdmin, async (req, res) => {
 
 app.post('/api/users/signup', async (req, res) => {
     const { full_name, email, password, company_id, role, invite_code } = req.body;
-    if (!full_name || !email || !password || !company_id) return res.status(400).json({ error: "Missing data" });
+    if (!full_name || !email || !password) return res.status(400).json({ error: "Missing data" });
 
-    // Validate invite if not admin
-    if (role !== 'admin' && invite_code) {
-        const invite = await dbQuery(sysDb, "SELECT * FROM invites WHERE code = ? AND company_id = ? AND used = 0", [invite_code, company_id]);
+    // Extract domain from email
+    const domain = email.split('@')[1];
+    if (!domain) return res.status(400).json({ error: "Invalid email address" });
+
+    // AUTOMATIC COMPANY ASSIGNMENT: Check if a company exists with this email domain
+    const company = await new Promise((resolve, reject) => {
+        sysDb.get("SELECT id, name FROM companies WHERE domain = ?", [domain], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+
+    let finalCompanyId = company_id;
+    let finalRole = role || 'user';
+
+    if (company) {
+        // Company exists for this domain -> assign user to it automatically
+        finalCompanyId = company.id;
+        console.log(`[Signup] Auto-assigned user ${email} to company ${company.name} (ID: ${company.id}) based on domain ${domain}`);
+    } else if (!company_id) {
+        // No company found and no company_id provided
+        return res.status(400).json({ error: "No company found for this domain. Please use an invite code or register your company first." });
+    }
+
+    // Validate invite if provided
+    if (invite_code) {
+        const invite = await new Promise((resolve, reject) => {
+            sysDb.get("SELECT * FROM invites WHERE code = ? AND company_id = ? AND used = 0", [invite_code, finalCompanyId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
         if (!invite) return res.status(400).json({ error: "Invalid or used invite code." });
         if (invite.expires_at && new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: "Invite code expired." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const cDb = getCompanyDb(company_id);
+    const cDb = getCompanyDb(finalCompanyId);
 
     cDb.run("INSERT INTO users (full_name, email, password, role, must_change_password) VALUES (?, ?, ?, ?, 0)",
-        [full_name, email, hashedPassword, role || 'user'], function(err) {
+        [full_name, email, hashedPassword, finalRole], function(err) {
             if (err) {
                 cDb.close();
                 return res.status(400).json({ error: "User already exists." });
             }
             const userId = this.lastID;
-            sysDb.run("INSERT INTO user_index (email, company_id) VALUES (?, ?)", [email, company_id], (err) => {
+            sysDb.run("INSERT OR REPLACE INTO user_index (email, company_id) VALUES (?, ?)", [email, finalCompanyId], (err) => {
                 if (invite_code) sysDb.run("UPDATE invites SET used = 1 WHERE code = ?", [invite_code]);
                 cDb.close();
                 res.json({ success: true, user_id: userId });
