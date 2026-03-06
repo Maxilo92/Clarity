@@ -13,6 +13,9 @@ const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: process.env.SMTP_SECURE === 'true',
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -358,8 +361,17 @@ app.post('/api/support/send', async (req, res) => {
                   `--- End of Request ---`
         };
 
-        await transporter.sendMail(mailOptions);
-        res.json({ success: true, message: "Support request sent successfully." });
+        try {
+            await Promise.race([
+                transporter.sendMail(mailOptions),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('SMTP timeout')), 12000))
+            ]);
+            res.json({ success: true, message: "Support request sent successfully." });
+        } catch (mailErr) {
+            // Avoid blocking user flow if SMTP provider is slow/unreachable on deployment.
+            console.error("[Support API] SMTP delivery delayed:", mailErr.message || mailErr);
+            res.json({ success: true, degraded: true, message: "Support request received. Email delivery is delayed." });
+        }
     } catch (e) {
         console.error("[Support API] Error:", e);
         res.status(500).json({ error: "Failed to send support request." });

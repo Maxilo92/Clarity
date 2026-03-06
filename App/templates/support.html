@@ -197,9 +197,13 @@
             statusMsg.textContent = "Submitting your request...";
 
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+
                 const res = await fetch('/api/support/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
                     body: JSON.stringify({
                         company_id: user.company_id,
                         user_id: user.id,
@@ -209,7 +213,14 @@
                     })
                 });
 
-                const data = await res.json();
+                clearTimeout(timeoutId);
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (_) {
+                    data = {};
+                }
 
                 if (res.ok) {
                     statusMsg.style.color = "#059669";
@@ -220,7 +231,10 @@
                 }
             } catch (err) {
                 statusMsg.style.color = "#dc2626";
-                statusMsg.textContent = "✕ Error: " + err.message;
+                const msg = err.name === 'AbortError'
+                    ? 'Request timed out. Please try again.'
+                    : err.message;
+                statusMsg.textContent = "✕ Error: " + msg;
             } finally {
                 btnSend.disabled = false;
                 btnSend.textContent = "Send Request";
