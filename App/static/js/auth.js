@@ -29,14 +29,21 @@ const REMEMBERED_KEY = 'clarityRemembered';
         if (userStr) {
             try {
                 const user = JSON.parse(userStr);
-                const res = await fetch(`/api/config?user_id=${user.id}&company_id=${user.company_id}`);
-                if (!res.ok) throw new Error("Stale session");
+                
+                // Only validate if we have IDs
+                if (user && user.id && user.company_id) {
+                    const res = await fetch(`/api/config?user_id=${user.id}&company_id=${user.company_id}`);
+                    if (res.status === 401 || res.status === 404) {
+                        throw new Error("Session invalid");
+                    }
+                    // We ignore 500 errors during guard to prevent accidental kickouts
+                } else {
+                    console.warn("[Auth Guard] Incomplete user data. Forcing login.");
+                    throw new Error("Incomplete session");
+                }
             } catch (e) {
-                console.warn("[Auth Guard] Invalid session detected. Clearing...");
-                localStorage.removeItem(AUTH_KEY);
-                localStorage.removeItem(USER_KEY);
-                localStorage.removeItem(REMEMBERED_KEY);
-                window.location.href = '/login';
+                console.warn("[Auth Guard] Session validation failed:", e.message);
+                signOut();
                 return;
             }
         }

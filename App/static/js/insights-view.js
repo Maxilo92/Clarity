@@ -197,7 +197,7 @@
         }
 
         try {
-            const res = await fetch(`/api/categories/stats?company_id=${user.company_id}&month=${monthStr}`);
+            const res = await fetch(`/api/categories/stats?company_id=${user.company_id}&month=${monthStr}&requester_id=${user.id}`);
             const data = await res.json();
             
             if (!data.stats || data.stats.length === 0) {
@@ -235,7 +235,7 @@
                         <td>€${spent.toLocaleString('de-DE', {minimumFractionDigits: 2})}</td>
                         <td>${statusHtml}</td>
                         <td style="text-align: right;">
-                            <button class="btn-budget-action" onclick="window.openBudgetModal(${s.id}, '${s.name}', ${budget})" title="Set Budget">
+                            <button class="btn-budget-action" onclick="window.openBudgetModal('${s.id}', '${s.name}', ${budget})" title="Set Budget">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
                             </button>
                         </td>
@@ -266,21 +266,22 @@
     }
 
     async function saveBudget() {
-        const budget = parseFloat(document.getElementById('budgetInput').value);
-        if (isNaN(budget)) return alert("Please enter a valid number.");
+        const budgetValue = parseFloat(document.getElementById('budgetInput').value);
+        if (isNaN(budgetValue)) return alert("Please enter a valid number.");
 
         const user = JSON.parse(localStorage.getItem('clarityUser'));
         try {
-            const res = await fetch(`/api/categories/${activeBudgetId}/budget`, {
+            const res = await fetch(`/api/categories/${encodeURIComponent(activeBudgetId)}/budget`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ company_id: user.company_id, budget })
+                body: JSON.stringify({ company_id: user.company_id, budget: budgetValue, requester_id: user.id })
             });
             if (res.ok) {
                 closeBudgetModal();
                 loadBudgets();
             } else {
-                alert("Failed to update budget.");
+                const data = await res.json();
+                alert("Failed to update budget: " + (data.error || "Unknown error"));
             }
         } catch (e) {
             alert("Error updating budget.");

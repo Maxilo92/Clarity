@@ -14,7 +14,7 @@
             console.error("Could not parse user from localStorage", e);
         }
     }
-    const STORAGE_KEY = `clair_chat_history_${userId}`;
+    const STORAGE_KEY = `clair_chat_history_${companyId || 'guest'}_${userId}`;
     let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 
     function getTimeBasedGreeting() {
@@ -79,10 +79,20 @@ Address the user naturally.
                     </div>
                 </div>
                 <div class="ai-chat-messages" id="aiChatMessages"></div>
+                <div class="ai-chat-dropzone-overlay">
+                    <div class="dropzone-text">
+                        <span class="dropzone-icon">${ICONS.paperclip}</span>
+                        <span>Hier ablegen zum Analysieren</span>
+                    </div>
+                </div>
                 <div class="ai-chat-footer">
                     <div id="aiChatAttachmentPreview" class="ai-chat-attachment-preview"></div>
                     <div class="ai-chat-input-area">
                         <div class="ai-chat-input-wrapper">
+                            <button id="aiChatAttachFile" class="ai-chat-attach-btn" title="Datei anhängen">
+                                ${ICONS.paperclip}
+                            </button>
+                            <input type="file" id="aiChatFileInput" style="display: none;" accept="image/*">
                             <textarea id="aiChatInput" placeholder="Frage Clair..." rows="1"></textarea>
                             <button id="aiChatSend" class="ai-chat-send-button" title="Senden">
                                 ${ICONS.send}
@@ -116,8 +126,10 @@ Address the user naturally.
     }
 
     // Capture references AFTER injection
-    let panel, overlay, closeBtn, clearBtn, input, sendBtn, messages, attachmentPreview;
+    let panel, overlay, closeBtn, clearBtn, input, sendBtn, messages, attachmentPreview, fileInput, attachBtn;
     let currentAttachment = null;
+    let currentFile = null;
+    let currentFileBase64 = null;
 
     function initRefs() {
         panel = document.getElementById('aiChatPanel');
@@ -128,6 +140,8 @@ Address the user naturally.
         sendBtn = document.getElementById('aiChatSend');
         messages = document.getElementById('aiChatMessages');
         attachmentPreview = document.getElementById('aiChatAttachmentPreview');
+        fileInput = document.getElementById('aiChatFileInput');
+        attachBtn = document.getElementById('aiChatAttachFile');
     }
 
     function openChat(e) {
@@ -154,6 +168,67 @@ Address the user naturally.
             localStorage.removeItem(STORAGE_KEY);
             initializeChat();
         }
+    }
+
+    function handleFileUpload(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            alert("Bitte hänge nur Bilder (z.B. Rechnungen) an.");
+            return;
+        }
+
+        currentFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1200;
+                const MAX_HEIGHT = 1200;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                currentFileBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                showFilePreview(file.name, currentFileBase64);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showFilePreview(name, base64) {
+        if (!attachmentPreview) initRefs();
+        attachmentPreview.innerHTML = `
+            <div class="attachment-bubble file-bubble">
+                <img src="${base64}" class="attachment-preview-img">
+                <div class="attachment-info">
+                    <span class="attachment-name">${name}</span>
+                    <span class="attachment-meta">Bild angehängt</span>
+                </div>
+                <button class="attachment-remove" id="aiChatRemoveFile">${ICONS.close}</button>
+            </div>
+        `;
+        attachmentPreview.classList.add('visible');
+        document.getElementById('aiChatRemoveFile').onclick = () => {
+            currentFile = null;
+            currentFileBase64 = null;
+            attachmentPreview.innerHTML = '';
+            attachmentPreview.classList.remove('visible');
+        };
     }
 
     function setAttachment(transaction) {
@@ -223,13 +298,13 @@ Address the user naturally.
         });
     }
 
-    function appendMessage(text, role, save = true, attachment = null, isError = false, forceNoTypewriter = false, toolInfo = null, timestamp = null) {
-        if (!text && !attachment) return;
+    function appendMessage(text, role, save = true, attachment = null, isError = false, forceNoTypewriter = false, toolInfo = null, timestamp = null, image = null) {
+        if (!text && !attachment && !image) return;
         if (!messages) initRefs();
 
         // Filter out technical markers and function calls from display
         const cleanText = text.replace(/(QUERY|ADD_TRANSACTION|DELETE_TRANSACTION):[\s\n]*\{[\s\S]*?\}|<function=.*?>\s*(\{[\s\S]*?\})?/gi, '').trim();
-        if (!cleanText && role !== 'user' && !attachment) return;
+        if (!cleanText && role !== 'user' && !attachment && !image) return;
         
         const wrapper = document.createElement('div');
         wrapper.className = 'ai-message ai-message--' + (role === 'user' ? 'user' : 'bot');
@@ -260,6 +335,15 @@ Address the user naturally.
                 </div>
             `;
             bubbleContainer.appendChild(attBubble);
+        }
+
+        if (image) {
+            const imgBubble = document.createElement('div');
+            imgBubble.className = 'attachment-bubble file-bubble';
+            imgBubble.innerHTML = `
+                <img src="${image}" style="max-width: 150px; border-radius: 8px;">
+            `;
+            bubbleContainer.appendChild(imgBubble);
         }
 
         if (cleanText) {
@@ -312,7 +396,7 @@ Address the user naturally.
         messages.scrollTop = messages.scrollHeight;
 
         if (save) {
-            chatHistory.push({ role, content: text, attachment, timestamp: displayDate.toISOString(), toolInfo });
+            chatHistory.push({ role, content: text, attachment, timestamp: displayDate.toISOString(), toolInfo, image });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory.slice(-20)));
         }
     }
@@ -365,12 +449,20 @@ Address the user naturally.
     async function sendMessage() {
         if (!input) initRefs();
         const text = input.value.trim();
-        if (!text && !currentAttachment) return;
+        if (!text && !currentAttachment && !currentFile) return;
 
-        appendMessage(text, 'user', true, currentAttachment);
+        const sentImage = currentFileBase64;
+        appendMessage(text, 'user', true, currentAttachment, false, false, null, null, sentImage);
         input.value = '';
         input.style.height = 'auto';
         setAttachment(null);
+        if (attachmentPreview) {
+            attachmentPreview.innerHTML = '';
+            attachmentPreview.classList.remove('visible');
+        }
+        const fileToUpload = currentFile;
+        currentFile = null;
+        currentFileBase64 = null;
         sendBtn.disabled = true;
 
         const typingEl = showTyping();
@@ -379,7 +471,7 @@ Address the user naturally.
 
         try {
             const apiMessages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(
-                chatHistory.map(m => {
+                chatHistory.map((m, index) => {
                     let content = m.content;
                     if (m.attachment) {
                         content += `\n\n[ATTACHED TRANSACTION - BEREITS IN DATENBANK]\n`;
@@ -390,6 +482,25 @@ Address the user naturally.
                         if (m.attachment.timestamp) content += `- Datum: ${new Date(m.attachment.timestamp).toLocaleDateString()}\n`;
                         content += `[ENDE ATTACHMENT]`;
                     }
+                    
+                    // Keep the image in context for at least 10 turns to ensure follow-up questions work
+                    if (m.image) {
+                        if (index >= chatHistory.length - 10) {
+                            return { 
+                                role: m.role === 'bot' ? 'assistant' : m.role, 
+                                content: [
+                                    { type: "text", text: content || "Hier ist ein Bild einer Rechnung/eines Belegs." },
+                                    { type: "image_url", image_url: { url: m.image } }
+                                ]
+                            };
+                        } else {
+                            return { 
+                                role: m.role === 'bot' ? 'assistant' : m.role, 
+                                content: (content || "") + "\n[BILD VORHANDEN IM VERLAUF - DATEN BEREITS BEKANNT]"
+                            };
+                        }
+                    }
+
                     return { role: m.role === 'bot' ? 'assistant' : m.role, content };
                 })
             );
@@ -550,6 +661,41 @@ Address the user naturally.
         }
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChat(); });
 
+        if (attachBtn) attachBtn.onclick = () => fileInput.click();
+        if (fileInput) fileInput.onchange = (e) => handleFileUpload(e.target.files[0]);
+
+        // Global Drag & Drop to auto-open Clair
+        window.addEventListener('dragenter', (e) => {
+            if (e.dataTransfer.types.includes('Files')) {
+                openChat();
+                if (panel) panel.classList.add('drag-over');
+            }
+        });
+
+        if (panel) {
+            panel.ondragover = (e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                panel.classList.add('drag-over'); 
+            };
+            panel.ondragleave = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Only remove if we're not dragging over children
+                if (e.relatedTarget === null || !panel.contains(e.relatedTarget)) {
+                    panel.classList.remove('drag-over');
+                }
+            };
+            panel.ondrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                panel.classList.remove('drag-over');
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                }
+            };
+        }
+
         const diamondBtns = document.querySelectorAll('.diamond-btn');
         if (diamondBtns.length > 0) {
             console.log(`[Clair] Found ${diamondBtns.length} diamond button(s).`);
@@ -571,7 +717,7 @@ Address the user naturally.
             const greeting = getTimeBasedGreeting();
             appendMessage(`${greeting}! Ich bin Clair. Wie kann ich dir heute helfen?`, 'bot', true);
         } else {
-            chatHistory.forEach(msg => appendMessage(msg.content, msg.role, false, msg.attachment, false, true, msg.toolInfo, msg.timestamp));
+            chatHistory.forEach(msg => appendMessage(msg.content, msg.role, false, msg.attachment, false, true, msg.toolInfo, msg.timestamp, msg.image));
         }
     }
 
@@ -583,7 +729,6 @@ Address the user naturally.
         if (!t) return;
         openChat();
         setAttachment(t);
-        input.value = `Kannst du mir mehr zu dieser Transaktion sagen?`;
         input.focus();
     });
 })();

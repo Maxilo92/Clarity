@@ -7,7 +7,6 @@
  * incrementally without a full rebuild.
  */
 (function() {
-    const DB_NAME = 'clarityIndex';
     const DB_VERSION = 1;
     const STORE_TX   = 'transactions';
     const STORE_META = 'meta';
@@ -16,6 +15,11 @@
     let isBuilding = false;
 
     // ── helpers ──────────────────────────────────────────────────────────
+    function getDBName() {
+        const { companyId } = getUserInfo();
+        return `clarityIndex_${companyId || 'default'}`;
+    }
+
     function getUserInfo() {
         try {
             const u = JSON.parse(localStorage.getItem('clarityUser'));
@@ -27,7 +31,8 @@
     function openDB() {
         return new Promise((resolve, reject) => {
             if (db) return resolve(db);
-            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            const name = getDBName();
+            const req = indexedDB.open(name, DB_VERSION);
             req.onupgradeneeded = (e) => {
                 const d = e.target.result;
                 if (!d.objectStoreNames.contains(STORE_TX)) {

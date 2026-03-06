@@ -15,12 +15,14 @@
     }
 
     function getCached() {
+        const companyId = getCompanyId();
+        if (!companyId) return null;
         try {
-            const raw = sessionStorage.getItem(CACHE_KEY);
+            const raw = sessionStorage.getItem(`${CACHE_KEY}_${companyId}`);
             if (!raw) return null;
             const cached = JSON.parse(raw);
             if (Date.now() - cached.timestamp > CACHE_TTL) {
-                sessionStorage.removeItem(CACHE_KEY);
+                sessionStorage.removeItem(`${CACHE_KEY}_${companyId}`);
                 return null;
             }
             return cached.categories;
@@ -28,8 +30,10 @@
     }
 
     function setCache(categories) {
+        const companyId = getCompanyId();
+        if (!companyId) return;
         try {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify({ categories, timestamp: Date.now() }));
+            sessionStorage.setItem(`${CACHE_KEY}_${companyId}`, JSON.stringify({ categories, timestamp: Date.now() }));
         } catch {}
     }
 
@@ -97,7 +101,10 @@
      * Invalidate the categories cache.
      */
     function invalidateCache() {
-        sessionStorage.removeItem(CACHE_KEY);
+        const companyId = getCompanyId();
+        if (companyId) {
+            sessionStorage.removeItem(`${CACHE_KEY}_${companyId}`);
+        }
     }
 
     /**

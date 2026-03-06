@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clarity - Access Denied</title>
+    <link rel="icon" type="image/png" href="../assets/pictures/favicon.png">
+    <link rel="stylesheet" href="../static/css/style.css">
+    <style>
+        .error-container {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .error-card {
+            max-width: 500px;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            background: #fff1f2;
+            color: #e11d48;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+        h1 { font-size: 1.8rem; color: #1e293b; margin-bottom: 12px; }
+        p { color: #64748b; line-height: 1.6; margin-bottom: 32px; }
+        .btn-group { display: flex; gap: 12px; justify-content: center; }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #6f42c1; color: white; }
+        .btn-primary:hover { background: #5a32a3; transform: translateY(-1px); }
+        .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-secondary:hover { background: #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            </div>
+            <h1>Access Denied</h1>
+            <p>You don't have the necessary administrative privileges to access this area. If you believe this is an error, please contact your organization's master admin.</p>
+            <div class="btn-group">
+                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+                <a href="/support" class="btn btn-secondary">Contact Support</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
