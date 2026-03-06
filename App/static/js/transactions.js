@@ -56,11 +56,26 @@
         const PAGE_SIZE = 25;
         let isLoading = false;
         let hasMore = true;
+        let indexReadyPromise = null;
 
         const columnMap = {
             'Name': 'name', 'Category': 'kategorie', 'Amount': 'wert', 'Date': 'timestamp',
             'name': 'Name', 'kategorie': 'Category', 'wert': 'Amount', 'timestamp': 'Date'
         };
+
+        function ensureIndexReady() {
+            if (!window.IndexManager || typeof window.IndexManager.ensureIndex !== 'function') {
+                return Promise.resolve();
+            }
+            if (!indexReadyPromise) {
+                indexReadyPromise = window.IndexManager.ensureIndex().catch(err => {
+                    // Allow retry later if initial index check/build fails.
+                    indexReadyPromise = null;
+                    throw err;
+                });
+            }
+            return indexReadyPromise;
+        }
 
         function loadTransactions(append = false) {
             if (isLoading || (!hasMore && append)) return;
@@ -79,7 +94,7 @@
 
             // Try IndexManager first for fast local filtering
             if (window.IndexManager && !append) {
-                window.IndexManager.getAllTransactions().then(entries => {
+                ensureIndexReady().then(() => window.IndexManager.getAllTransactions()).then(entries => {
                     let filtered = entries;
                     
                     if (currentCategoryFilter !== 'all') {
