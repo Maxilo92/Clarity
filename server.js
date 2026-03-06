@@ -48,6 +48,9 @@ function getCompanyDb(companyId) {
             cDb.run(`ALTER TABLE categories ADD COLUMN budget REAL DEFAULT 0`, (err) => {});
             cDb.run(`ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0`, (err) => {});
             cDb.run(`ALTER TABLE users ADD COLUMN nickname TEXT`, (err) => {});
+            cDb.run(`ALTER TABLE users ADD COLUMN preferred_currency TEXT DEFAULT 'EUR'`, (err) => {});
+            cDb.run(`ALTER TABLE users ADD COLUMN preferred_language TEXT DEFAULT 'de'`, (err) => {});
+            cDb.run(`ALTER TABLE users ADD COLUMN ai_tone TEXT DEFAULT 'balanced'`, (err) => {});
         });
         migrationCache.add(companyId);
     }
@@ -128,6 +131,21 @@ const authPage = (requiredRole) => {
 
 const isAdmin = checkRole('admin');
 const isManager = checkRole('manager');
+
+// Middleware for any authenticated user (no role requirement)
+const isAuthenticated = (req, res, next) => {
+    const userId = req.headers['x-user-id'] || req.query.user_id || req.body.user_id || req.query.requester_id || req.body.requester_id;
+    const companyId = req.headers['x-company-id'] || req.query.company_id || req.body.company_id;
+    
+    if (!userId || !companyId) return res.status(401).json({ error: "Unauthorized" });
+
+    const cDb = getCompanyDb(companyId);
+    cDb.get("SELECT role FROM users WHERE id = ?", [userId], (err, row) => {
+        cDb.close();
+        if (err || !row) return res.status(401).json({ error: "Unauthorized" });
+        next();
+    });
+};
 
 // --- Audit Logging ---
 async function logAudit(companyId, userId, action, details, entityId = null, entityType = null) {
@@ -762,7 +780,7 @@ app.get('/api/categories', (req, res) => {
     });
 });
 
-app.get('/api/categories/stats', isManager, (req, res) => {
+app.get('/api/categories/stats', isAuthenticated, (req, res) => {
     const { company_id, month } = req.query;
     if (!company_id || !month) return res.status(400).json({ error: "Missing parameters" });
     const cDb = getCompanyDb(company_id);
@@ -799,7 +817,7 @@ app.post('/api/categories', isAdmin, (req, res) => {
         });
 });
 
-app.put('/api/categories/:name', isManager, (req, res) => {
+app.put('/api/categories/:name', isAuthenticated, (req, res) => {
     const { company_id, color, budget, icon, requester_id } = req.body;
     const catName = req.params.name;
     const cDb = getCompanyDb(company_id);
@@ -836,7 +854,7 @@ app.delete('/api/categories/:name', isAdmin, (req, res) => {
     });
 });
 
-app.get('/api/transactions', isManager, (req, res) => {
+app.get('/api/transactions', isAuthenticated, (req, res) => {
     const { company_id, start_date, end_date, limit, offset, id_gt, sort, order } = req.query;
     if (!company_id) return res.status(400).json({ error: "Missing company_id" });
     const cDb = getCompanyDb(company_id);
@@ -876,7 +894,7 @@ app.get('/api/transactions', isManager, (req, res) => {
     });
 });
 
-app.get('/api/transactions/ids', isManager, (req, res) => {
+app.get('/api/transactions/ids', isAuthenticated, (req, res) => {
     const { company_id } = req.query;
     if (!company_id) return res.status(400).json({ error: "Missing company_id" });
     const cDb = getCompanyDb(company_id);
@@ -887,7 +905,7 @@ app.get('/api/transactions/ids', isManager, (req, res) => {
     });
 });
 
-app.get('/api/transactions/index-status', isManager, (req, res) => {
+app.get('/api/transactions/index-status', isAuthenticated, (req, res) => {
     const { company_id } = req.query;
     if (!company_id) return res.status(400).json({ error: "Missing company_id" });
     const cDb = getCompanyDb(company_id);
